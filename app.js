@@ -55,17 +55,8 @@ const els = {
   setMeta: document.querySelector("#set-meta"),
   setSerie: document.querySelector("#set-serie"),
   setCount: document.querySelector("#set-count"),
-  opportunitiesList: document.querySelector("#opportunities-list"),
-  opportunitiesNote: document.querySelector("#opportunities-note"),
-  budgetInput: document.querySelector("#budget-input"),
-  budgetButton: document.querySelector("#budget-button"),
   navCatalog: document.querySelector("#nav-catalog"),
-  navHome: document.querySelector("#nav-home"),
-  navCollection: document.querySelector("#nav-collection"),
   navBinders: document.querySelector("#nav-binders"),
-  navAddCards: document.querySelector("#nav-add-cards"),
-  navOpportunities: document.querySelector("#nav-opportunities"),
-  navQuote: document.querySelector("#nav-quote"),
   navAccount: document.querySelector("#nav-account"),
   mobileNavCatalog: document.querySelector("#mobile-nav-catalog"),
   mobileNavBinders: document.querySelector("#mobile-nav-binders"),
@@ -73,12 +64,7 @@ const els = {
   navQuoteCount: document.querySelector("#nav-quote-count"),
   navQuoteTotal: document.querySelector("#nav-quote-total"),
   catalogPage: document.querySelector("#catalog-page"),
-  homePage: document.querySelector("#home-page"),
-  collectionPage: document.querySelector("#collection-page"),
   bindersPage: document.querySelector("#binders-page"),
-  addCardsPage: document.querySelector("#add-cards-page"),
-  opportunitiesPage: document.querySelector("#opportunities-page"),
-  quotePage: document.querySelector("#quote-page"),
   accountPage: document.querySelector("#account-page"),
   homeOwnedCount: document.querySelector("#home-owned-count"),
   homeDistinctCount: document.querySelector("#home-distinct-count"),
@@ -107,7 +93,6 @@ const els = {
   seriesTemplate: document.querySelector("#series-template"),
   setChipTemplate: document.querySelector("#set-chip-template"),
   cardTemplate: document.querySelector("#card-template"),
-  opportunityTemplate: document.querySelector("#opportunity-template"),
   dialog: document.querySelector("#card-dialog"),
   dialogClose: document.querySelector("#dialog-close"),
   dialogImage: document.querySelector("#dialog-image"),
@@ -473,35 +458,6 @@ async function getCardDetailCached(cardId) {
   return detail;
 }
 
-function renderOpportunities(items) {
-  els.opportunitiesList.innerHTML = "";
-  if (!items.length) {
-    els.opportunitiesList.innerHTML =
-      "<p class='subtitle'>Aucun candidat trouve pour ce budget avec les donnees actuelles.</p>";
-    return;
-  }
-
-  for (const item of items) {
-    const node = els.opportunityTemplate.content.firstElementChild.cloneNode(true);
-    const image = node.querySelector(".opportunity-image");
-    image.src = item.image_url || "";
-    image.alt = item.name;
-    image.hidden = !item.image_url;
-
-    node.querySelector(".card-local-id").textContent = item.local_id || "Sans no";
-    node.querySelector(".opportunity-score").textContent = `Score ${item.score}`;
-    node.querySelector(".opportunity-name").textContent = item.name;
-    node.querySelector(".opportunity-set").textContent = item.set_name || "";
-    node.querySelector(".opportunity-price").textContent = `Prix ${formatPrice(item.current_avg)}`;
-    node.querySelector(".opportunity-pct7").textContent = `7j ${formatPercent(item.pct7)}`;
-    node.querySelector(".opportunity-pct30").textContent = `30j ${formatPercent(item.pct30)}`;
-    addTrendClass(node.querySelector(".opportunity-pct7"), item.pct7);
-    addTrendClass(node.querySelector(".opportunity-pct30"), item.pct30);
-    node.addEventListener("click", () => openCardDetail(item.card_id));
-    els.opportunitiesList.appendChild(node);
-  }
-}
-
 function loadQuote() {
   try {
     const raw = localStorage.getItem(QUOTE_STORAGE_KEY);
@@ -642,7 +598,6 @@ function renderQuote() {
   const cardCount = state.quoteItems.reduce((sum, item) => sum + item.quantity, 0);
   els.quoteCount.textContent = `${cardCount} carte(s)`;
   els.quoteTotal.textContent = formatPrice(total);
-  els.navQuote.textContent = `Devis (${cardCount})`;
   els.navQuoteCount.textContent = `${cardCount} carte(s)`;
   els.navQuoteTotal.textContent = formatPrice(total);
 
@@ -1052,14 +1007,6 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-async function loadOpportunities() {
-  const payload = await fetchJson(`api/opportunities?budget=${state.budget}&limit=18`);
-  const minPrice = payload.min_price ?? 0;
-  els.opportunitiesNote.textContent =
-    `Cartes entre ${formatPrice(minPrice)} et ${formatPrice(state.budget)} avec momentum positif base locale (tendance).`;
-  renderOpportunities(payload.candidates || []);
-}
-
 function switchPage(page) {
   const normalizedPage = page === "account"
     ? "account"
@@ -1070,22 +1017,12 @@ function switchPage(page) {
   const bindersActive = normalizedPage === "binders";
   const accountActive = normalizedPage === "account";
 
-  els.homePage.hidden = !catalogActive;
   els.catalogPage.hidden = !catalogActive;
-  els.collectionPage.hidden = !bindersActive;
   els.bindersPage.hidden = !bindersActive;
-  els.addCardsPage.hidden = !bindersActive;
-  els.quotePage.hidden = !bindersActive;
-  els.opportunitiesPage.hidden = true;
   els.accountPage.hidden = !accountActive;
 
-  els.navHome.classList.toggle("is-active", catalogActive);
-  els.navCollection.classList.toggle("is-active", bindersActive);
   els.navBinders.classList.toggle("is-active", bindersActive);
-  els.navAddCards.classList.toggle("is-active", bindersActive);
   els.navCatalog.classList.toggle("is-active", catalogActive);
-  els.navOpportunities.classList.toggle("is-active", false);
-  els.navQuote.classList.toggle("is-active", bindersActive);
   els.navAccount.classList.toggle("is-active", accountActive);
   els.mobileNavCatalog.classList.toggle("is-active", catalogActive);
   els.mobileNavBinders.classList.toggle("is-active", bindersActive);
@@ -1642,12 +1579,10 @@ async function bootstrap() {
       els.setTitle.textContent = "Aucune extension disponible";
     }
 
-    await loadOpportunities();
   } catch (error) {
     els.setTitle.textContent = "Catalogue indisponible";
     els.setMeta.textContent =
       "Le catalogue et les prix demandent le serveur Python local. La version GitHub Pages sert uniquement l'application statique.";
-    els.opportunitiesNote.textContent = String(error);
   }
   renderQuote();
   switchPage("catalog");
@@ -1737,20 +1672,8 @@ els.sortDirection.addEventListener("change", () => {
   state.sortDirection = els.sortDirection.value;
   renderCards();
 });
-els.budgetButton.addEventListener("click", async () => {
-  state.budget = Number(els.budgetInput.value) || 10;
-  await loadOpportunities();
-});
-els.navHome.addEventListener("click", () => switchPage("catalog"));
-els.navCollection.addEventListener("click", async () => {
-  switchPage("binders");
-  await renderCollection();
-});
 els.navBinders.addEventListener("click", () => switchPage("binders"));
-els.navAddCards.addEventListener("click", () => switchPage("binders"));
 els.navCatalog.addEventListener("click", () => switchPage("catalog"));
-els.navOpportunities.addEventListener("click", () => switchPage("catalog"));
-els.navQuote.addEventListener("click", () => switchPage("binders"));
 els.navAccount.addEventListener("click", () => switchPage("account"));
 els.mobileNavCatalog.addEventListener("click", () => switchPage("catalog"));
 els.mobileNavBinders.addEventListener("click", () => switchPage("binders"));

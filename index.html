@@ -3,142 +3,49 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pokemon TCG Tracker</title>
-    <meta name="theme-color" content="#2457a6" />
+    <title>OpenCardex</title>
+    <meta name="theme-color" content="#163f7a" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <div class="top-nav">
+    <header class="top-nav">
       <div class="brand-mark">
         <span class="brand-symbol">OC</span>
         <span>OpenCardex</span>
       </div>
-      <button id="nav-catalog" class="nav-button is-active" type="button">Catalogue</button>
-      <button id="nav-binders" class="nav-button" type="button">Classeur</button>
-      <button id="nav-account" class="nav-button" type="button">Compte</button>
+      <nav class="desktop-nav" aria-label="Navigation principale">
+        <button id="nav-catalog" class="nav-button is-active" type="button">Catalogue</button>
+        <button id="nav-binders" class="nav-button" type="button">Classeur</button>
+        <button id="nav-account" class="nav-button" type="button">Compte</button>
+      </nav>
       <div class="nav-quote-summary">
         <span id="nav-quote-count" class="meta-chip">0 carte</span>
-        <span id="nav-quote-total" class="meta-chip">0,00 €</span>
+        <span id="nav-quote-total" class="meta-chip">0,00 EUR</span>
       </div>
-    </div>
+    </header>
 
-    <div class="legacy-nav" hidden>
-      <button id="nav-home" class="nav-button" type="button">Accueil</button>
-      <button id="nav-collection" class="nav-button" type="button">Ma collection</button>
-      <button id="nav-add-cards" class="nav-button" type="button">Ajouter des cartes</button>
-      <button id="nav-opportunities" class="nav-button" type="button">Screener achat</button>
-      <button id="nav-quote" class="nav-button" type="button">Devis</button>
-    </div>
-
-    <section id="home-page" class="screen-page" hidden>
-      <main class="screener-layout">
-        <section class="opportunities-panel">
-          <div class="opportunities-head">
-            <div>
-              <p class="eyebrow">OpenCardex</p>
-              <h2>Accueil</h2>
-              <p class="subtitle">Collection locale, classeurs, catalogue et estimations.</p>
-            </div>
-            <div class="hero-badges">
-              <span id="home-owned-count" class="meta-chip">0 carte</span>
-              <span id="home-distinct-count" class="meta-chip">0 reference</span>
-              <span id="home-collection-value" class="meta-chip">Valeur N/A</span>
-            </div>
-          </div>
-          <div id="home-recent-binders" class="binder-list"></div>
-        </section>
-      </main>
-    </section>
-
-    <section id="collection-page" class="screen-page" hidden>
-      <main class="screener-layout">
-        <section class="opportunities-panel">
-          <div class="opportunities-head">
-            <div>
-              <p class="eyebrow">Ma collection</p>
-              <h2>Cartes possedees</h2>
-              <p id="collection-summary" class="subtitle"></p>
-            </div>
-            <div class="opportunities-controls">
-              <select id="collection-filter-binder" aria-label="Filtrer par classeur"></select>
-              <select id="collection-sort" aria-label="Trier la collection">
-                <option value="updated_desc">Recemment modifiees</option>
-                <option value="name_asc">Nom</option>
-                <option value="value_desc">Valeur estimee</option>
-              </select>
-              <button id="collection-export-button" class="primary-button" type="button">Export JSON</button>
-              <button id="collection-import-button" class="primary-button" type="button">Import JSON</button>
-            </div>
-          </div>
-          <div id="collection-grid" class="cards-grid"></div>
-          <input id="collection-import-input" type="file" accept=".json,application/json" hidden />
-        </section>
-      </main>
-    </section>
-
-    <section id="binders-page" class="screen-page" hidden>
-      <main class="screener-layout binders-layout">
-        <section class="opportunities-panel">
-          <div class="opportunities-head">
-            <div>
-              <p class="eyebrow">Mes classeurs</p>
-              <h2>Classeurs</h2>
-              <p class="subtitle">Organise les cartes en plusieurs classeurs.</p>
-            </div>
-          </div>
-          <form id="binder-form" class="binder-form">
-            <input id="binder-name" type="text" placeholder="Nom du classeur" required />
-            <input id="binder-description" type="text" placeholder="Description facultative" />
-            <button class="primary-button" type="submit">Creer</button>
-          </form>
-          <div id="binder-list" class="binder-list"></div>
-        </section>
-      </main>
-    </section>
-
-    <section id="add-cards-page" class="screen-page" hidden>
-      <main class="screener-layout">
-        <section class="opportunities-panel">
-          <div class="opportunities-head">
-            <div>
-              <p class="eyebrow">Ajouter des cartes</p>
-              <h2>Recherche TCGdex locale</h2>
-              <p class="subtitle">Recherche une carte puis ajoute-la a un classeur.</p>
-            </div>
-          </div>
-          <div class="cards-toolbar">
-            <div class="search-box">
-              <input id="owned-card-search" type="search" placeholder="Nom de carte, ex: Pikachu" autocomplete="off" />
-            </div>
-            <button id="owned-card-search-button" class="primary-button" type="button">Rechercher</button>
-          </div>
-          <div id="owned-card-search-results" class="cards-grid"></div>
-        </section>
-      </main>
-    </section>
-
-    <section id="catalog-page" class="app-shell">
+    <section id="catalog-page" class="page app-shell">
       <aside class="sidebar">
         <div class="sidebar-head">
-          <p class="eyebrow">Catalogue FR</p>
-          <h1>Blocs et extensions</h1>
-          <p class="subtitle">
-            Series physiques Pokemon TCG, sans TCG Pocket.
-          </p>
+          <p class="eyebrow">OpenCardex</p>
+          <h1>Catalogue</h1>
+          <p class="subtitle">Series physiques Pokemon TCG, sans TCG Pocket.</p>
+        </div>
+        <div class="home-stats">
+          <span id="home-owned-count" class="meta-chip">0 carte</span>
+          <span id="home-distinct-count" class="meta-chip">0 reference</span>
+          <span id="home-collection-value" class="meta-chip">Valeur N/A</span>
         </div>
         <div id="series-list" class="series-list"></div>
       </aside>
 
       <main class="content">
-        <section class="hero-panel">
+        <section class="panel hero-panel">
           <div>
             <p class="eyebrow">Vue extension</p>
             <h2 id="set-title">Chargement...</h2>
@@ -150,16 +57,21 @@
           </div>
         </section>
 
-        <section class="cards-panel">
+        <section class="panel home-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Accueil</p>
+              <h2>Classeurs recents</h2>
+            </div>
+          </div>
+          <div id="home-recent-binders" class="binder-list compact-list"></div>
+        </section>
+
+        <section class="panel cards-panel">
           <div class="cards-toolbar">
             <div class="toolbar-main">
               <div class="search-box">
-                <input
-                  id="card-search"
-                  type="search"
-                  placeholder="Rechercher une carte dans toute la base, ex: Dracaufeu"
-                  autocomplete="off"
-                />
+                <input id="card-search" type="search" placeholder="Rechercher une carte, ex: Dracaufeu" autocomplete="off" />
                 <div id="card-search-suggestions" class="search-suggestions" hidden></div>
               </div>
               <div class="sort-controls">
@@ -181,67 +93,81 @@
       </main>
     </section>
 
-    <section id="opportunities-page" class="screen-page" hidden>
-      <main class="screener-layout">
-        <section class="opportunities-panel">
-          <div class="opportunities-head">
+    <section id="binders-page" class="page screen-page" hidden>
+      <main class="stack-layout">
+        <section class="panel">
+          <div class="section-head">
             <div>
-              <p class="eyebrow">Screening achat</p>
-              <h2>Cartes interessantes a acheter</h2>
-              <p class="subtitle">
-                Budget cible + score de momentum pour sortir des candidats.
-              </p>
-            </div>
-            <div class="opportunities-controls">
-              <label class="budget-field">
-                <span>Budget cible</span>
-                <input id="budget-input" type="number" min="1" step="1" value="10" />
-              </label>
-              <button id="budget-button" class="primary-button" type="button">
-                Chercher
-              </button>
+              <p class="eyebrow">Classeur</p>
+              <h2>Organisation</h2>
+              <p class="subtitle">Cree tes classeurs, ajoute des cartes et gere ta collection.</p>
             </div>
           </div>
-          <p id="opportunities-note" class="subtitle">
-            Cartes proches du budget selectionne.
-          </p>
-          <div id="opportunities-list" class="opportunities-list"></div>
+          <form id="binder-form" class="binder-form">
+            <input id="binder-name" type="text" placeholder="Nom du classeur" required />
+            <input id="binder-description" type="text" placeholder="Description facultative" />
+            <button class="primary-button" type="submit">Creer</button>
+          </form>
+          <div id="binder-list" class="binder-list"></div>
         </section>
-      </main>
-    </section>
 
-    <section id="quote-page" class="screen-page" hidden>
-      <main class="screener-layout">
-        <section class="opportunities-panel">
-          <div class="opportunities-head">
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Ajouter</p>
+              <h2>Recherche locale</h2>
+              <p class="subtitle">Recherche une carte puis ajoute-la a un classeur.</p>
+            </div>
+          </div>
+          <div class="cards-toolbar">
+            <div class="search-box">
+              <input id="owned-card-search" type="search" placeholder="Nom de carte, ex: Pikachu" autocomplete="off" />
+            </div>
+            <button id="owned-card-search-button" class="primary-button" type="button">Rechercher</button>
+          </div>
+          <div id="owned-card-search-results" class="cards-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Collection</p>
+              <h2>Cartes possedees</h2>
+              <p id="collection-summary" class="subtitle"></p>
+            </div>
+            <div class="controls">
+              <select id="collection-filter-binder" aria-label="Filtrer par classeur"></select>
+              <select id="collection-sort" aria-label="Trier la collection">
+                <option value="updated_desc">Recemment modifiees</option>
+                <option value="name_asc">Nom</option>
+                <option value="value_desc">Valeur estimee</option>
+              </select>
+              <button id="collection-export-button" class="primary-button" type="button">Export JSON</button>
+              <button id="collection-import-button" class="secondary-button" type="button">Import JSON</button>
+            </div>
+          </div>
+          <div id="collection-grid" class="cards-grid"></div>
+          <input id="collection-import-input" type="file" accept=".json,application/json" hidden />
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
             <div>
               <p class="eyebrow">Devis</p>
               <h2>Liste de cartes</h2>
-              <p class="subtitle">
-                Modifie les prix, ajuste les quantites, exporte ou remets a zero.
-              </p>
+              <p class="subtitle">Modifie les prix, ajuste les quantites, exporte ou remets a zero.</p>
             </div>
-            <div class="opportunities-controls">
-              <button id="quote-import-button" class="primary-button" type="button">
-                Importer
-              </button>
-              <button id="quote-save-button" class="primary-button" type="button">
-                Enregistrer
-              </button>
-              <button id="quote-export-json-button" class="primary-button" type="button">
-                Export JSON
-              </button>
-              <button id="quote-export-button" class="primary-button" type="button">
-                Export CSV
-              </button>
-              <button id="quote-reset-button" class="nav-button" type="button">
-                Remise a zero
-              </button>
+            <div class="controls">
+              <button id="quote-import-button" class="secondary-button" type="button">Importer</button>
+              <button id="quote-save-button" class="primary-button" type="button">Enregistrer</button>
+              <button id="quote-export-json-button" class="secondary-button" type="button">Export JSON</button>
+              <button id="quote-export-button" class="secondary-button" type="button">Export CSV</button>
+              <button id="quote-reset-button" class="danger-button" type="button">Remise a zero</button>
             </div>
           </div>
           <div class="hero-badges">
             <span id="quote-count" class="meta-chip">0 carte</span>
-            <span id="quote-total" class="meta-chip">0,00 €</span>
+            <span id="quote-total" class="meta-chip">0,00 EUR</span>
           </div>
           <div id="quote-list" class="quote-list"></div>
           <input id="quote-import-input" type="file" accept=".json,application/json" hidden />
@@ -249,16 +175,14 @@
       </main>
     </section>
 
-    <section id="account-page" class="screen-page" hidden>
-      <main class="screener-layout account-layout">
-        <section class="opportunities-panel">
-          <div class="opportunities-head">
+    <section id="account-page" class="page screen-page" hidden>
+      <main class="stack-layout">
+        <section class="panel">
+          <div class="section-head">
             <div>
               <p class="eyebrow">Compte</p>
               <h2>Parametres</h2>
-              <p class="subtitle">
-                La sauvegarde et la synchronisation des donnees locales seront regroupees ici.
-              </p>
+              <p class="subtitle">La sauvegarde et la synchronisation des donnees locales seront regroupees ici.</p>
             </div>
           </div>
           <div class="settings-grid">
@@ -309,9 +233,7 @@
 
     <dialog id="card-dialog" class="card-dialog">
       <div class="dialog-layout">
-        <button id="dialog-close" class="dialog-close" type="button" aria-label="Fermer">
-          ×
-        </button>
+        <button id="dialog-close" class="dialog-close" type="button" aria-label="Fermer">X</button>
         <div class="dialog-visual">
           <img id="dialog-image" alt="" />
           <p id="dialog-image-note" class="image-note"></p>
@@ -321,49 +243,18 @@
           <h2 id="dialog-title"></h2>
           <p id="dialog-subtitle" class="subtitle"></p>
           <div class="dialog-actions">
-            <a
-              id="dialog-cardmarket"
-              class="primary-button button-link"
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              hidden
-            >
-              Voir sur Cardmarket
-            </a>
-          <button id="dialog-add-quote" class="primary-button" type="button">
-              Ajouter au devis
-            </button>
-            <button id="dialog-add-owned" class="primary-button" type="button">
-              Ajouter a la collection
-            </button>
+            <a id="dialog-cardmarket" class="primary-button button-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Voir sur Cardmarket</a>
+            <button id="dialog-add-quote" class="primary-button" type="button">Ajouter au devis</button>
+            <button id="dialog-add-owned" class="secondary-button" type="button">Ajouter a la collection</button>
           </div>
 
           <div class="detail-stats">
-            <div class="stat-box">
-              <span class="stat-label">Prix moyen</span>
-              <strong id="dialog-avg"></strong>
-            </div>
-            <div class="stat-box">
-              <span class="stat-label">Prix bas</span>
-              <strong id="dialog-low"></strong>
-            </div>
-            <div class="stat-box">
-              <span class="stat-label">Tendance</span>
-              <strong id="dialog-mean"></strong>
-            </div>
-            <div class="stat-box">
-              <span class="stat-label">Variation</span>
-              <strong id="dialog-change"></strong>
-            </div>
-            <div class="stat-box">
-              <span class="stat-label">Holo</span>
-              <strong id="dialog-holo"></strong>
-            </div>
-            <div class="stat-box">
-              <span class="stat-label">Reverse</span>
-              <strong id="dialog-reverse"></strong>
-            </div>
+            <div class="stat-box"><span class="stat-label">Prix moyen</span><strong id="dialog-avg"></strong></div>
+            <div class="stat-box"><span class="stat-label">Prix bas</span><strong id="dialog-low"></strong></div>
+            <div class="stat-box"><span class="stat-label">Tendance</span><strong id="dialog-mean"></strong></div>
+            <div class="stat-box"><span class="stat-label">Variation</span><strong id="dialog-change"></strong></div>
+            <div class="stat-box"><span class="stat-label">Holo</span><strong id="dialog-holo"></strong></div>
+            <div class="stat-box"><span class="stat-label">Reverse</span><strong id="dialog-reverse"></strong></div>
           </div>
 
           <div class="chart-panel">
@@ -375,9 +266,7 @@
               </div>
             </div>
             <svg id="dialog-chart" viewBox="0 0 640 240" preserveAspectRatio="none"></svg>
-            <div id="dialog-chart-selection" class="chart-selection subtitle">
-              Selectionne un point du graphe pour voir le detail.
-            </div>
+            <div id="dialog-chart-selection" class="chart-selection subtitle">Selectionne un point du graphe pour voir le detail.</div>
           </div>
 
           <div class="history-panel">
@@ -402,22 +291,14 @@
           <input id="quote-draft-price" type="number" min="0" step="0.01" />
         </label>
         <label class="quote-field">
-          <span class="history-cell-label">Quantité</span>
+          <span class="history-cell-label">Quantite</span>
           <input id="quote-draft-quantity" type="number" min="1" step="1" value="1" />
         </label>
       </div>
       <div class="quote-draft-actions">
-        <a
-          id="quote-draft-cardmarket"
-          class="primary-button button-link"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Revoir Cardmarket
-        </a>
+        <a id="quote-draft-cardmarket" class="primary-button button-link" href="#" target="_blank" rel="noopener noreferrer">Revoir Cardmarket</a>
         <button id="quote-draft-confirm" class="primary-button" type="button">Confirmer</button>
-        <button id="quote-draft-cancel" class="nav-button" type="button">Annuler</button>
+        <button id="quote-draft-cancel" class="secondary-button" type="button">Annuler</button>
       </div>
     </section>
 
@@ -481,7 +362,7 @@
       </label>
       <div class="quote-draft-actions">
         <button id="owned-draft-confirm" class="primary-button" type="button">Ajouter</button>
-        <button id="owned-draft-cancel" class="nav-button" type="button">Annuler</button>
+        <button id="owned-draft-cancel" class="secondary-button" type="button">Annuler</button>
       </div>
     </section>
 
@@ -527,25 +408,6 @@
           </div>
         </button>
         <button class="card-quote-button primary-button" type="button">+ Devis</button>
-      </article>
-    </template>
-
-    <template id="opportunity-template">
-      <article class="opportunity-card">
-        <img class="opportunity-image" alt="" loading="lazy" />
-        <div class="opportunity-copy">
-          <div class="opportunity-topline">
-            <p class="card-local-id"></p>
-            <span class="toolbar-count opportunity-score"></span>
-          </div>
-          <h3 class="opportunity-name"></h3>
-          <p class="opportunity-set subtitle"></p>
-          <div class="opportunity-metrics">
-            <span class="meta-chip opportunity-price"></span>
-            <span class="meta-chip opportunity-pct7"></span>
-            <span class="meta-chip opportunity-pct30"></span>
-          </div>
-        </div>
       </article>
     </template>
 
