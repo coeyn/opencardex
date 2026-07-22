@@ -25,3 +25,43 @@ Ce couplage doit être remplacé progressivement par une configuration explicite
 - Ne pas convertir un prix absent en zéro.
 - Afficher la source et la date quand elles sont connues.
 - Un devis conserve `market_price_at_quote` et `offered_unit_price`.
+
+## Export JSON pour GitHub Pages
+
+Le NAS peut continuer a produire ou synchroniser `tracker_snapshot.db`. Pour GitHub Pages, il vaut mieux publier des JSON optimises plutot que le fichier SQLite brut.
+
+Commande:
+
+```powershell
+python scripts/export_static_data.py --clean
+```
+
+Sortie:
+
+- `web/data/version.json`: version, date de generation, compteurs et derniere mise a jour prix.
+- `web/data/series.json`: navigation series/extensions.
+- `web/data/sets/{setId}.json`: cartes d'une extension avec dernier prix connu.
+- `web/data/cards/{cardId}.json`: detail carte et historique.
+- `web/data/search-index.json`: index compact pour la recherche et le screener statique.
+
+Workflow NAS recommande:
+
+1. Mettre a jour le snapshot SQLite.
+2. Lancer `python scripts/export_static_data.py --clean`.
+3. Commit uniquement `web/data/`.
+4. Push vers GitHub.
+5. GitHub Actions publie la nouvelle version Pages.
+
+Script Windows/NAS:
+
+```powershell
+$env:POKEMON_TCG_TRACKER_DB="C:\chemin\vers\tracker_snapshot.db"
+.\scripts\publish_static_data.ps1 -CommitMessage "Update static catalog data"
+```
+
+Prerequis sur le NAS:
+
+- Python 3.12+;
+- Git configure avec acces push au depot;
+- variable `POKEMON_TCG_TRACKER_DB` pointant vers le snapshot SQLite a publier;
+- tache planifiee apres la mise a jour du snapshot.

@@ -60,6 +60,12 @@ Collecter les prix par lots:
 python scripts/collect_prices.py --batch-size 200
 ```
 
+Exporter les JSON statiques pour GitHub Pages:
+
+```powershell
+python scripts/export_static_data.py --clean
+```
+
 Lancer l'application Web/PWA:
 
 ```powershell
@@ -88,6 +94,15 @@ https://coeyn.github.io/opencardex/
 ```
 
 Cette version Pages heberge l'application statique et la couche IndexedDB locale. Le catalogue, la recherche TCGdex locale et les prix demandent encore le serveur Python, car les routes `/api/...` ne sont pas disponibles sur GitHub Pages.
+
+Pour rendre le catalogue disponible sur Pages, exporter `web/data/` avec `scripts/export_static_data.py`, commit puis push. Le frontend essaie d'abord l'API locale, puis utilise automatiquement ces JSON statiques si l'API n'existe pas.
+
+Depuis un NAS ou une machine Windows qui a acces au snapshot SQLite et au depot Git:
+
+```powershell
+$env:POKEMON_TCG_TRACKER_DB="C:\chemin\vers\tracker_snapshot.db"
+.\scripts\publish_static_data.ps1 -CommitMessage "Update static catalog data"
+```
 
 ## Donnees locales
 

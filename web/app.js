@@ -19,6 +19,8 @@ const state = {
   pendingOwnedCardDraft: null,
   ownedCardSearchResults: [],
   cardDetailsCache: new Map(),
+  staticSearchIndex: null,
+  staticCardDetailsBySet: new Map(),
 };
 
 const QUOTE_STORAGE_KEY = "pokemon_tcg_tracker_quote_v1";
@@ -156,11 +158,159 @@ const els = {
 };
 
 async function fetchJson(url) {
-  const response = await fetch(url);
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    const staticPayload = await fetchStaticJsonFallback(url);
+    if (staticPayload !== null) {
+      return staticPayload;
+    }
+    throw error;
+  }
+}
+
+async function fetchStaticJsonFallback(url) {
+  const parsed = new URL(url, window.location.href);
+  const path = parsed.pathname.replace(/^.*\/api\//, "api/");
+  if (!path.startsWith("api/")) {
+    return null;
+  }
+
+  if (path === "api/series") {
+    return fetchStaticJson("data/series.json");
+  }
+
+  if (path.startsWith("api/sets/")) {
+    return fetchStaticJson(`data/sets/${encodeURIComponent(path.replace("api/sets/", ""))}.json`);
+  }
+
+  if (path.startsWith("api/cards/")) {
+    return loadStaticCardDetail(path.replace("api/cards/", ""));
+  }
+
+  if (path === "api/search/cards") {
+    const query = parsed.searchParams.get("q") || "";
+    const limit = Number(parsed.searchParams.get("limit") || 120);
+    return searchStaticCards(query, limit);
+  }
+
+  if (path === "api/search/suggestions") {
+    const query = parsed.searchParams.get("q") || "";
+    const limit = Number(parsed.searchParams.get("limit") || 8);
+    return searchStaticSuggestions(query, limit);
+  }
+
+  if (path === "api/opportunities") {
+    const budget = Number(parsed.searchParams.get("budget") || 10);
+    const limit = Number(parsed.searchParams.get("limit") || 18);
+    return loadStaticOpportunities(budget, limit);
+  }
+
+  return null;
+}
+
+async function fetchStaticJson(path) {
+  const response = await fetch(path);
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    throw new Error(`Static data unavailable: ${path}`);
   }
   return response.json();
+}
+
+async function loadStaticSearchIndex() {
+  if (state.staticSearchIndex) {
+    return state.staticSearchIndex;
+  }
+  const payload = await fetchStaticJson("data/search-index.json");
+  state.staticSearchIndex = payload.cards || [];
+  return state.staticSearchIndex;
+}
+
+async function loadStaticCardDetail(cardId) {
+  const cards = await loadStaticSearchIndex();
+  const brief = cards.find((card) => card.id === cardId);
+  if (!brief?.set_id) {
+    throw new Error(`Static card not found: ${cardId}`);
+  }
+  if (!state.staticCardDetailsBySet.has(brief.set_id)) {
+    const payload = await fetchStaticJson(`data/card-details/${encodeURIComponent(brief.set_id)}.json`);
+    state.staticCardDetailsBySet.set(brief.set_id, payload.cards || {});
+  }
+  const details = state.staticCardDetailsBySet.get(brief.set_id);
+  const card = details[cardId];
+  if (!card) {
+    throw new Error(`Static card detail not found: ${cardId}`);
+  }
+  return card;
+}
+
+async function searchStaticCards(query, limit) {
+  const normalized = query.trim().toLocaleLowerCase("fr-FR");
+  if (!normalized) {
+    return { query: "", count: 0, cards: [] };
+  }
+  const cards = await loadStaticSearchIndex();
+  const results = cards
+    .filter((card) => `${card.name || ""} ${card.local_id || ""} ${card.set_name || ""}`.toLocaleLowerCase("fr-FR").includes(normalized))
+    .sort((left, right) => String(left.name).localeCompare(String(right.name), "fr", { sensitivity: "base" }))
+    .slice(0, limit);
+  return { query, count: results.length, cards: results };
+}
+
+async function searchStaticSuggestions(query, limit) {
+  const normalized = query.trim().toLocaleLowerCase("fr-FR");
+  if (normalized.length < 2) {
+    return { query, suggestions: [] };
+  }
+  const cards = await loadStaticSearchIndex();
+  const byName = new Map();
+  for (const card of cards) {
+    const name = String(card.name || "");
+    if (!name.toLocaleLowerCase("fr-FR").includes(normalized)) continue;
+    byName.set(name, (byName.get(name) || 0) + 1);
+  }
+  const suggestions = [...byName.entries()]
+    .map(([name, cardCount]) => ({ name, card_count: cardCount }))
+    .sort((left, right) => left.name.localeCompare(right.name, "fr", { sensitivity: "base" }))
+    .slice(0, limit);
+  return { query, suggestions };
+}
+
+async function loadStaticOpportunities(budget, limit) {
+  const cards = await loadStaticSearchIndex();
+  const minPrice = Math.max(Math.max(budget * 0.7, budget - 3), 0.25);
+  const candidates = cards
+    .map((card) => {
+      const avg = Number(card.latest_price?.avg);
+      if (!Number.isFinite(avg) || avg < minPrice || avg > budget) return null;
+      const slope = card.slope || {};
+      const delta = Number(slope.delta_pct || 0);
+      return {
+        card_id: card.id,
+        local_id: card.local_id,
+        name: card.name,
+        set_name: card.set_name,
+        current_avg: avg,
+        current_low: card.latest_price?.low,
+        trend: card.latest_price?.trend,
+        avg_holo: card.latest_price?.avg_holo,
+        reverse_market: card.latest_price?.tcgplayer_reverse_market,
+        snapshot_count: slope.points || 0,
+        pct7: null,
+        pct30: delta,
+        score: Math.round((Math.max(delta, 0) + Math.max(budget - avg, 0)) * 100) / 100,
+        image_url: card.image_url,
+        image_language: card.image_language,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit);
+  return { budget, min_price: minPrice, limit, candidates };
 }
 
 let searchSuggestionRequestId = 0;
