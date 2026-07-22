@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,6 +44,35 @@ def write_json(path: Path, payload: object) -> None:
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
+
+
+def format_duration(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    minutes, secs = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m{secs:02d}s"
+    if minutes:
+        return f"{minutes}m{secs:02d}s"
+    return f"{secs}s"
+
+
+def print_progress(label: str, current: int, total: int, started_at: float) -> None:
+    elapsed = time.monotonic() - started_at
+    if current <= 0 or total <= 0:
+        eta = "?"
+        percent = 0.0
+    else:
+        percent = (current / total) * 100
+        rate = elapsed / current
+        eta = format_duration(rate * (total - current))
+    message = (
+        f"\r{label}: {current}/{total} "
+        f"({percent:5.1f}%) elapsed {format_duration(elapsed)} ETA {eta}"
+    )
+    print(message, end="", flush=True)
+    if current >= total:
+        print(flush=True)
 
 
 def latest_price_select(prefix: str = "ps") -> str:
@@ -118,6 +148,7 @@ def load_slope_statuses(connection, card_ids: list[str]) -> dict[str, dict[str, 
 
 
 def export_series(connection, output_dir: Path) -> None:
+    print("Exporting series navigation...", flush=True)
     series_rows = connection.execute(
         """
         SELECT
@@ -192,9 +223,11 @@ def export_series(connection, output_dir: Path) -> None:
             ]
         },
     )
+    print(f"Series exported: {len(series_rows)} series, {len(set_rows)} sets", flush=True)
 
 
 def export_sets_and_search(connection, output_dir: Path) -> dict[str, list[str]]:
+    started_at = time.monotonic()
     set_rows = connection.execute(
         """
         SELECT set_id, serie_id, name, logo_url, symbol_url, release_date, official_count, total_count
@@ -204,7 +237,8 @@ def export_sets_and_search(connection, output_dir: Path) -> dict[str, list[str]]
     ).fetchall()
     all_search_cards: list[dict[str, object]] = []
     card_ids_by_set: dict[str, list[str]] = {}
-    for set_row in set_rows:
+    total_sets = len(set_rows)
+    for index, set_row in enumerate(set_rows, start=1):
         card_rows = connection.execute(
             f"""
             SELECT
@@ -271,23 +305,37 @@ def export_sets_and_search(connection, output_dir: Path) -> dict[str, list[str]]
                 "cards": cards,
             },
         )
+        print_progress(
+            "Exporting set cards",
+            index,
+            total_sets,
+            started_at,
+        )
     write_json(
         output_dir / "search-index.json",
         {
             "cards": all_search_cards,
         },
     )
+    print(f"Search index exported: {len(all_search_cards)} cards", flush=True)
     return card_ids_by_set
 
 
 def export_card_details(connection, output_dir: Path, card_ids_by_set: dict[str, list[str]]) -> None:
-    for set_id, card_ids in card_ids_by_set.items():
+    started_at = time.monotonic()
+    items = list(card_ids_by_set.items())
+    total_sets = len(items)
+    exported_cards = 0
+    for index, (set_id, card_ids) in enumerate(items, start=1):
         cards_payload: dict[str, dict[str, object]] = {}
         for card_id in card_ids:
             card_payload = build_card_detail_payload(connection, card_id)
             if card_payload is not None:
                 cards_payload[card_id] = card_payload
+                exported_cards += 1
         write_json(output_dir / "card-details" / f"{set_id}.json", {"cards": cards_payload})
+        print_progress("Exporting card details", index, total_sets, started_at)
+    print(f"Card details exported: {exported_cards} cards", flush=True)
 
 
 def build_card_detail_payload(connection, card_id: str) -> dict[str, object] | None:
@@ -360,6 +408,7 @@ def build_card_detail_payload(connection, card_id: str) -> dict[str, object] | N
 
 
 def export_version(connection, output_dir: Path) -> None:
+    print("Exporting version metadata...", flush=True)
     row = connection.execute("SELECT MAX(captured_at) AS last_price_update FROM price_snapshots").fetchone()
     counts = {
         table_name: connection.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
@@ -374,11 +423,16 @@ def export_version(connection, output_dir: Path) -> None:
             "counts": counts,
         },
     )
+    print("Version metadata exported", flush=True)
 
 
 def main() -> None:
+    started_at = time.monotonic()
     args = parse_args()
+    db_label = args.db_path if args.db_path else "configured DB_PATH"
+    print(f"Static export started from {db_label}", flush=True)
     if args.clean and args.output_dir.exists():
+        print(f"Cleaning output directory: {args.output_dir}", flush=True)
         shutil.rmtree(args.output_dir)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     connection_context = connect(args.db_path) if args.db_path else connect()
@@ -388,7 +442,10 @@ def main() -> None:
         card_ids_by_set = export_sets_and_search(connection, args.output_dir)
         export_card_details(connection, args.output_dir, card_ids_by_set)
         export_version(connection, args.output_dir)
-    print(f"Static data exported to {args.output_dir}")
+    print(
+        f"Static data exported to {args.output_dir} in {format_duration(time.monotonic() - started_at)}",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":
