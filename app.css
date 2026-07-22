@@ -183,25 +183,90 @@ h2 {
   padding: 20px;
 }
 
-.app-shell {
-  display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-  gap: 20px;
-}
-
-.content,
+.catalog-shell,
 .stack-layout {
   display: grid;
   gap: 20px;
 }
 
+.catalog-shell,
 .stack-layout {
   max-width: 1400px;
   margin: 0 auto;
 }
 
+.catalog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text);
+}
+
+.icon-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.catalog-search-row {
+  width: 100%;
+}
+
+.catalog-picker {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.series-select {
+  width: 100%;
+  font-weight: 800;
+}
+
+.set-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.set-strip .set-chip {
+  flex: 0 0 auto;
+}
+
+.catalog-meta {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.catalog-sort {
+  display: flex;
+  gap: 8px;
+}
+
 .panel,
-.sidebar,
 .dialog-layout,
 .quote-draft-panel {
   background: var(--panel);
@@ -210,23 +275,8 @@ h2 {
   box-shadow: var(--shadow);
 }
 
-.panel,
-.sidebar {
+.panel {
   padding: 20px;
-}
-
-.sidebar {
-  overflow: hidden;
-}
-
-.sidebar-head {
-  margin-bottom: 16px;
-}
-
-.home-stats {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 16px;
 }
 
 .section-head,
@@ -451,6 +501,10 @@ select:focus {
 
 .cards-grid {
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.catalog-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .binder-list,
@@ -885,13 +939,8 @@ select:focus {
 }
 
 @media (max-width: 1080px) {
-  .app-shell,
   .dialog-layout {
     grid-template-columns: 1fr;
-  }
-
-  .series-list {
-    max-height: none;
   }
 
   .detail-stats {
@@ -933,14 +982,12 @@ select:focus {
     padding: 10px;
   }
 
-  .panel,
-  .sidebar {
+  .panel {
     padding: 14px;
   }
 
-  .content,
   .stack-layout,
-  .app-shell {
+  .catalog-shell {
     gap: 10px;
   }
 
@@ -957,9 +1004,85 @@ select:focus {
     width: 100%;
   }
 
+  .catalog-page {
+    padding: 12px 10px;
+  }
+
+  .catalog-header h1 {
+    font-size: 28px;
+  }
+
+  .catalog-picker {
+    grid-template-columns: minmax(118px, 34vw) minmax(0, 1fr);
+  }
+
+  .series-select,
+  .set-chip {
+    min-height: 40px;
+  }
+
+  .set-chip {
+    max-width: 150px;
+    padding: 0 10px;
+  }
+
+  .set-chip-logo {
+    width: 18px;
+    height: 18px;
+  }
+
+  .set-chip-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .catalog-meta {
+    display: none;
+  }
+
+  .catalog-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .catalog-card-grid .card-visual-wrap {
+    min-height: 0;
+    aspect-ratio: 0.72;
+    padding: 4px;
+  }
+
+  .catalog-card-grid .card-copy {
+    gap: 2px;
+  }
+
+  .catalog-card-grid .card-local-id,
+  .catalog-card-grid .card-lang-badge,
+  .catalog-card-grid .card-set-name,
+  .catalog-card-grid .image-price-group,
+  .catalog-card-grid .card-slope-badge {
+    display: none;
+  }
+
+  .catalog-card-grid .card-name {
+    font-size: 11px;
+    line-height: 1.15;
+    min-height: 26px;
+    overflow: hidden;
+  }
+
+  .catalog-card-grid .card-quote-button,
+  .catalog-card-grid .card-owned-button {
+    display: none;
+  }
+
   .cards-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  .cards-grid.catalog-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .card-visual-wrap {

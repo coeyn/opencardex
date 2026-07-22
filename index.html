@@ -29,67 +29,55 @@
       </div>
     </header>
 
-    <section id="catalog-page" class="page app-shell">
-      <aside class="sidebar">
-        <div class="sidebar-head">
-          <p class="eyebrow">OpenCardex</p>
-          <h1>Catalogue</h1>
-          <p class="subtitle">Series physiques Pokemon TCG, sans TCG Pocket.</p>
-        </div>
-        <div class="home-stats">
-          <span id="home-owned-count" class="meta-chip">0 carte</span>
-          <span id="home-distinct-count" class="meta-chip">0 reference</span>
-          <span id="home-collection-value" class="meta-chip">Valeur N/A</span>
-        </div>
-        <div id="series-list" class="series-list"></div>
-      </aside>
+    <section id="catalog-page" class="page catalog-page">
+      <main class="catalog-shell">
+        <header class="catalog-header">
+          <h1>OpenCardex</h1>
+          <button id="catalog-search-toggle" class="icon-button" type="button" aria-label="Rechercher une carte">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m16 16 4 4"></path>
+            </svg>
+          </button>
+        </header>
 
-      <main class="content">
-        <section class="panel hero-panel">
+        <div id="catalog-search-row" class="catalog-search-row" hidden>
+          <div class="search-box">
+            <input id="card-search" type="search" placeholder="Rechercher une carte, ex: Dracaufeu" autocomplete="off" />
+            <div id="card-search-suggestions" class="search-suggestions" hidden></div>
+          </div>
+        </div>
+
+        <section class="catalog-picker" aria-label="Filtres catalogue">
+          <select id="series-select" class="series-select" aria-label="Choisir un bloc"></select>
+          <div id="set-strip" class="set-strip" aria-label="Extensions du bloc"></div>
+        </section>
+
+        <section class="catalog-meta">
           <div>
-            <p class="eyebrow">Vue extension</p>
             <h2 id="set-title">Chargement...</h2>
             <p id="set-meta" class="subtitle"></p>
           </div>
           <div class="hero-badges">
             <span id="set-serie" class="meta-chip"></span>
             <span id="set-count" class="meta-chip"></span>
-          </div>
-        </section>
-
-        <section class="panel home-panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Accueil</p>
-              <h2>Classeurs recents</h2>
-            </div>
-          </div>
-          <div id="home-recent-binders" class="binder-list compact-list"></div>
-        </section>
-
-        <section class="panel cards-panel">
-          <div class="cards-toolbar">
-            <div class="toolbar-main">
-              <div class="search-box">
-                <input id="card-search" type="search" placeholder="Rechercher une carte, ex: Dracaufeu" autocomplete="off" />
-                <div id="card-search-suggestions" class="search-suggestions" hidden></div>
-              </div>
-              <div class="sort-controls">
-                <select id="sort-field" aria-label="Champ de tri">
-                  <option value="local_id">Numero</option>
-                  <option value="name">Nom</option>
-                  <option value="avg" selected>Prix moyen</option>
-                </select>
-                <select id="sort-direction" aria-label="Sens du tri">
-                  <option value="asc">Croissant</option>
-                  <option value="desc" selected>Decroissant</option>
-                </select>
-              </div>
-            </div>
             <span id="card-total" class="toolbar-count"></span>
           </div>
-          <div id="cards-grid" class="cards-grid"></div>
         </section>
+
+        <div class="catalog-sort" hidden>
+          <select id="sort-field" aria-label="Champ de tri">
+            <option value="local_id">Numero</option>
+            <option value="name">Nom</option>
+            <option value="avg" selected>Prix moyen</option>
+          </select>
+          <select id="sort-direction" aria-label="Sens du tri">
+            <option value="asc">Croissant</option>
+            <option value="desc" selected>Decroissant</option>
+          </select>
+        </div>
+
+        <div id="cards-grid" class="cards-grid catalog-card-grid"></div>
       </main>
     </section>
 
@@ -365,19 +353,6 @@
         <button id="owned-draft-cancel" class="secondary-button" type="button">Annuler</button>
       </div>
     </section>
-
-    <template id="series-template">
-      <section class="series-card">
-        <div class="series-card-head">
-          <img class="series-logo" alt="" />
-          <div>
-            <h3></h3>
-            <p class="series-stats"></p>
-          </div>
-        </div>
-        <div class="set-chip-list"></div>
-      </section>
-    </template>
 
     <template id="set-chip-template">
       <button class="set-chip" type="button">

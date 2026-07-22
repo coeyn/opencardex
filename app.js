@@ -50,7 +50,10 @@ function getOrderedSeries(series) {
 }
 
 const els = {
-  seriesList: document.querySelector("#series-list"),
+  seriesSelect: document.querySelector("#series-select"),
+  setStrip: document.querySelector("#set-strip"),
+  catalogSearchToggle: document.querySelector("#catalog-search-toggle"),
+  catalogSearchRow: document.querySelector("#catalog-search-row"),
   setTitle: document.querySelector("#set-title"),
   setMeta: document.querySelector("#set-meta"),
   setSerie: document.querySelector("#set-serie"),
@@ -66,10 +69,6 @@ const els = {
   catalogPage: document.querySelector("#catalog-page"),
   bindersPage: document.querySelector("#binders-page"),
   accountPage: document.querySelector("#account-page"),
-  homeOwnedCount: document.querySelector("#home-owned-count"),
-  homeDistinctCount: document.querySelector("#home-distinct-count"),
-  homeCollectionValue: document.querySelector("#home-collection-value"),
-  homeRecentBinders: document.querySelector("#home-recent-binders"),
   collectionSummary: document.querySelector("#collection-summary"),
   collectionGrid: document.querySelector("#collection-grid"),
   collectionFilterBinder: document.querySelector("#collection-filter-binder"),
@@ -90,7 +89,6 @@ const els = {
   cardSearchSuggestions: document.querySelector("#card-search-suggestions"),
   sortField: document.querySelector("#sort-field"),
   sortDirection: document.querySelector("#sort-direction"),
-  seriesTemplate: document.querySelector("#series-template"),
   setChipTemplate: document.querySelector("#set-chip-template"),
   cardTemplate: document.querySelector("#card-template"),
   dialog: document.querySelector("#card-dialog"),
@@ -740,7 +738,6 @@ async function loadCollectionData() {
   renderOwnedDraftBinderOptions();
   renderBinders();
   await renderCollection();
-  await renderHome();
 }
 
 function getBinderName(binderId) {
@@ -774,29 +771,6 @@ async function getOwnedCardView(ownedCard) {
 
 async function buildOwnedCardViews() {
   return Promise.all(state.ownedCards.map(getOwnedCardView));
-}
-
-async function renderHome() {
-  const totalQuantity = state.ownedCards.reduce((sum, card) => sum + card.quantity, 0);
-  const distinctCount = new Set(state.ownedCards.map((card) => card.cardId)).size;
-  els.homeOwnedCount.textContent = `${totalQuantity} carte(s)`;
-  els.homeDistinctCount.textContent = `${distinctCount} reference(s)`;
-  const views = await buildOwnedCardViews();
-  const knownValue = views.reduce((sum, view) => sum + (view.totalValue ?? 0), 0);
-  const missingCount = views.filter((view) => view.totalValue === null).length;
-  els.homeCollectionValue.textContent =
-    missingCount > 0 ? `${formatPrice(knownValue)} + ${missingCount} prix N/A` : formatPrice(knownValue);
-  const recent = [...state.binders]
-    .sort((left, right) => String(right.updatedAt).localeCompare(String(left.updatedAt)))
-    .slice(0, 4);
-  els.homeRecentBinders.innerHTML = recent.length
-    ? recent.map((binder) => `
-      <article class="binder-card">
-        <h3>${escapeHtml(binder.name)}</h3>
-        <p class="subtitle">${escapeHtml(binder.description || "Aucune description")}</p>
-      </article>
-    `).join("")
-    : "<p class='subtitle'>Aucun classeur.</p>";
 }
 
 function renderCollectionFilters() {
@@ -1191,41 +1165,37 @@ function buildPriceTimeline(data) {
 }
 
 function renderSeries() {
-  els.seriesList.innerHTML = "";
-
   const orderedSeries = getOrderedSeries(state.series);
+  const activeSerie = orderedSeries.find((serie) =>
+    serie.sets.some((setItem) => setItem.id === state.activeSetId),
+  ) || orderedSeries[0];
 
+  els.seriesSelect.innerHTML = "";
   for (const serie of orderedSeries) {
-    const node = els.seriesTemplate.content.firstElementChild.cloneNode(true);
-    node.querySelector("h3").textContent = serie.name;
-    node.querySelector(".series-stats").textContent =
-      `${serie.set_count} extensions - ${serie.total_cards} cartes`;
+    const option = document.createElement("option");
+    option.value = serie.id || serie.name;
+    option.textContent = `${serie.name} (${serie.set_count})`;
+    option.selected = activeSerie && (serie.id || serie.name) === (activeSerie.id || activeSerie.name);
+    els.seriesSelect.appendChild(option);
+  }
 
-    const logo = node.querySelector(".series-logo");
-    logo.src = serie.logo_url || "";
-    logo.alt = serie.name;
-    logo.hidden = !serie.logo_url;
+  els.setStrip.innerHTML = "";
+  for (const setItem of activeSerie?.sets || []) {
+    const chip = els.setChipTemplate.content.firstElementChild.cloneNode(true);
+    chip.dataset.setId = setItem.id;
+    chip.querySelector(".set-chip-label").textContent = setItem.name;
 
-    const chipList = node.querySelector(".set-chip-list");
-    for (const setItem of serie.sets) {
-      const chip = els.setChipTemplate.content.firstElementChild.cloneNode(true);
-      chip.dataset.setId = setItem.id;
-      chip.querySelector(".set-chip-label").textContent = setItem.name;
+    const chipLogo = chip.querySelector(".set-chip-logo");
+    chipLogo.src = setItem.symbol_url || setItem.logo_url || "";
+    chipLogo.alt = "";
+    chipLogo.hidden = !(setItem.symbol_url || setItem.logo_url);
 
-      const chipLogo = chip.querySelector(".set-chip-logo");
-      chipLogo.src = setItem.symbol_url || setItem.logo_url || "";
-      chipLogo.alt = "";
-      chipLogo.hidden = !(setItem.symbol_url || setItem.logo_url);
-
-      if (setItem.id === state.activeSetId) {
-        chip.classList.add("is-active");
-      }
-
-      chip.addEventListener("click", () => loadSet(setItem.id));
-      chipList.appendChild(chip);
+    if (setItem.id === state.activeSetId) {
+      chip.classList.add("is-active");
     }
 
-    els.seriesList.appendChild(node);
+    chip.addEventListener("click", () => loadSet(setItem.id));
+    els.setStrip.appendChild(chip);
   }
 }
 
@@ -1671,6 +1641,20 @@ els.sortField.addEventListener("change", () => {
 els.sortDirection.addEventListener("change", () => {
   state.sortDirection = els.sortDirection.value;
   renderCards();
+});
+els.seriesSelect.addEventListener("change", async () => {
+  const orderedSeries = getOrderedSeries(state.series);
+  const selectedSerie = orderedSeries.find((serie) => (serie.id || serie.name) === els.seriesSelect.value);
+  const firstSet = selectedSerie?.sets?.[0];
+  if (firstSet) {
+    await loadSet(firstSet.id);
+  }
+});
+els.catalogSearchToggle.addEventListener("click", () => {
+  els.catalogSearchRow.hidden = !els.catalogSearchRow.hidden;
+  if (!els.catalogSearchRow.hidden) {
+    els.cardSearch.focus();
+  }
 });
 els.navBinders.addEventListener("click", () => switchPage("binders"));
 els.navCatalog.addEventListener("click", () => switchPage("catalog"));
