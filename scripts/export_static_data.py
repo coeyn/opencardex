@@ -26,6 +26,12 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "web" / "data"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Export SQLite catalog and prices as static JSON.")
+    parser.add_argument(
+        "--db-path",
+        type=Path,
+        default=None,
+        help="SQLite database to export. Defaults to POKEMON_TCG_TRACKER_DB or the project config.",
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--clean", action="store_true", help="Remove the output directory before exporting.")
     return parser.parse_args()
@@ -375,7 +381,8 @@ def main() -> None:
     if args.clean and args.output_dir.exists():
         shutil.rmtree(args.output_dir)
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    with connect() as connection:
+    connection_context = connect(args.db_path) if args.db_path else connect()
+    with connection_context as connection:
         initialize_schema(connection)
         export_series(connection, args.output_dir)
         card_ids_by_set = export_sets_and_search(connection, args.output_dir)

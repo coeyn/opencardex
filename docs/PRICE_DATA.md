@@ -33,7 +33,7 @@ Le NAS peut continuer a produire ou synchroniser `tracker_snapshot.db`. Pour Git
 Commande:
 
 ```powershell
-python scripts/export_static_data.py --clean
+python scripts/export_static_data.py --db-path /chemin/vers/tracker_snapshot.db --clean
 ```
 
 Sortie:

@@ -63,7 +63,7 @@ python scripts/collect_prices.py --batch-size 200
 Exporter les JSON statiques pour GitHub Pages:
 
 ```powershell
-python scripts/export_static_data.py --clean
+python scripts/export_static_data.py --db-path C:\chemin\vers\tracker_snapshot.db --clean
 ```
 
 Lancer l'application Web/PWA:
