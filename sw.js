@@ -1,4 +1,4 @@
-const CACHE_NAME = "opencardex-app-v1";
+const CACHE_NAME = "opencardex-app-v3";
 const APP_SHELL = [
   "./",
   "index.html",
@@ -29,19 +29,35 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  if (url.origin !== self.location.origin || url.pathname.includes("/api/")) {
+  if (
+    url.origin !== self.location.origin ||
+    url.pathname.includes("/api/") ||
+    url.pathname.includes("/data/")
+  ) {
     return;
   }
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(() => caches.match("offline.html"))
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put("index.html", clone));
+          return response;
+        })
+        .catch(() => caches.match("index.html").then((cached) => cached || caches.match("offline.html")))
     );
     return;
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request))
+    fetch(request)
+      .then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });
 

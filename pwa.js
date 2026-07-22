@@ -25,6 +25,7 @@
   window.addEventListener("load", async () => {
     try {
       const registration = await navigator.serviceWorker.register("sw.js");
+      registration.update();
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
         if (!worker) return;
