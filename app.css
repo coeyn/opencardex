@@ -1154,3 +1154,350 @@ h1 {
     width: auto;
   }
 }
+
+/* 3-page OpenCardex shell */
+:root {
+  --bg: #f5f7fb;
+  --bg-alt: #e9edf5;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --line: #d9dee9;
+  --text: #111827;
+  --muted: #607086;
+  --accent: #2457a6;
+  --accent-strong: #163f7a;
+  --good: #178052;
+  --bad: #c23a3a;
+  --shadow: 0 10px 26px rgba(17, 24, 39, 0.08);
+  --radius-lg: 12px;
+  --radius-md: 8px;
+  --radius-sm: 8px;
+}
+
+body {
+  background: var(--bg);
+}
+
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  gap: 8px;
+  padding: 12px 20px;
+  background: rgba(245, 247, 251, 0.92);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 10px;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.brand-symbol,
+.setting-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #163f7a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.legacy-nav {
+  display: none !important;
+}
+
+.nav-button,
+.primary-button,
+.quote-cardmarket {
+  border-radius: 8px;
+}
+
+.nav-button {
+  min-height: 40px;
+  padding: 0 14px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.nav-button:hover {
+  background: #eef2f8;
+  color: var(--text);
+}
+
+.nav-button.is-active,
+.primary-button,
+.quote-cardmarket {
+  background: var(--accent-strong);
+  color: #fff;
+}
+
+.nav-quote-summary {
+  margin-left: auto;
+}
+
+.app-shell,
+.screen-page {
+  padding: 20px;
+}
+
+.app-shell {
+  min-height: auto;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+}
+
+.screen-page + .screen-page {
+  padding-top: 0;
+}
+
+.sidebar,
+.hero-panel,
+.cards-panel,
+.opportunities-panel,
+.dialog-layout {
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: none;
+}
+
+.sidebar,
+.hero-panel,
+.cards-panel,
+.opportunities-panel,
+.series-card,
+.card-visual-wrap,
+.dialog-layout,
+.stat-box,
+.chart-panel,
+.history-panel,
+.quote-row,
+.opportunity-card,
+.quote-draft-panel {
+  border-radius: 8px;
+}
+
+.hero-panel h2,
+h1 {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: 30px;
+  line-height: 1.05;
+}
+
+.hero-panel h2 {
+  font-size: 32px;
+  line-height: 1.05;
+}
+
+.eyebrow {
+  color: var(--accent);
+  letter-spacing: 0.08em;
+}
+
+.series-list {
+  gap: 10px;
+}
+
+.series-card {
+  padding: 14px;
+}
+
+.series-card h3,
+.binder-card h3,
+.quote-card-copy h3,
+.opportunity-name,
+.quote-draft-copy h3,
+.card-name {
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.set-chip {
+  border-radius: 8px;
+  background: #eef2f8;
+}
+
+.set-chip:hover,
+.set-chip.is-active {
+  background: #dbeafe;
+  border-color: #9ab6df;
+}
+
+.meta-chip,
+.toolbar-count {
+  min-height: 34px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.cards-grid {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.card-visual-wrap {
+  min-height: 250px;
+  background: #f8fafc;
+}
+
+.image-price-badge,
+.card-slope-badge,
+.quote-slope-badge {
+  border-radius: 8px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.setting-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.setting-card h3 {
+  font-size: 18px;
+}
+
+.mobile-tabbar {
+  display: none;
+}
+
+.mobile-tab {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.mobile-tab svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mobile-tab.is-active {
+  color: var(--accent-strong);
+}
+
+@media (max-width: 720px) {
+  body {
+    padding-bottom: 76px;
+  }
+
+  .top-nav {
+    display: none;
+  }
+
+  .mobile-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right));
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -10px 24px rgba(17, 24, 39, 0.08);
+    backdrop-filter: blur(16px);
+  }
+
+  .app-shell,
+  .screen-page {
+    padding: 10px;
+  }
+
+  .screen-page + .screen-page {
+    padding-top: 0;
+  }
+
+  .sidebar,
+  .cards-panel,
+  .hero-panel,
+  .opportunities-panel {
+    padding: 14px;
+  }
+
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    max-height: 38vh;
+    overflow: auto;
+  }
+
+  .hero-panel h2 {
+    font-size: 24px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  .cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .card-visual-wrap {
+    min-height: 210px;
+    padding: 8px;
+  }
+
+  .image-price-group {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .image-price-badge {
+    min-height: 28px;
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .card-name {
+    font-size: 15px;
+  }
+
+  .card-owned-button,
+  .card-quote-button {
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .quote-draft-panel {
+    bottom: 82px;
+  }
+}

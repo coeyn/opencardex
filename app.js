@@ -66,6 +66,10 @@ const els = {
   navAddCards: document.querySelector("#nav-add-cards"),
   navOpportunities: document.querySelector("#nav-opportunities"),
   navQuote: document.querySelector("#nav-quote"),
+  navAccount: document.querySelector("#nav-account"),
+  mobileNavCatalog: document.querySelector("#mobile-nav-catalog"),
+  mobileNavBinders: document.querySelector("#mobile-nav-binders"),
+  mobileNavAccount: document.querySelector("#mobile-nav-account"),
   navQuoteCount: document.querySelector("#nav-quote-count"),
   navQuoteTotal: document.querySelector("#nav-quote-total"),
   catalogPage: document.querySelector("#catalog-page"),
@@ -75,6 +79,7 @@ const els = {
   addCardsPage: document.querySelector("#add-cards-page"),
   opportunitiesPage: document.querySelector("#opportunities-page"),
   quotePage: document.querySelector("#quote-page"),
+  accountPage: document.querySelector("#account-page"),
   homeOwnedCount: document.querySelector("#home-owned-count"),
   homeDistinctCount: document.querySelector("#home-distinct-count"),
   homeCollectionValue: document.querySelector("#home-collection-value"),
@@ -1056,27 +1061,41 @@ async function loadOpportunities() {
 }
 
 function switchPage(page) {
-  const homeActive = page === "home";
-  const collectionActive = page === "collection";
-  const bindersActive = page === "binders";
-  const addCardsActive = page === "add-cards";
-  const catalogActive = page === "catalog";
-  const opportunitiesActive = page === "opportunities";
-  const quoteActive = page === "quote";
-  els.homePage.hidden = !homeActive;
-  els.collectionPage.hidden = !collectionActive;
-  els.bindersPage.hidden = !bindersActive;
-  els.addCardsPage.hidden = !addCardsActive;
+  const normalizedPage = page === "account"
+    ? "account"
+    : ["collection", "binders", "add-cards", "quote"].includes(page)
+      ? "binders"
+      : "catalog";
+  const catalogActive = normalizedPage === "catalog";
+  const bindersActive = normalizedPage === "binders";
+  const accountActive = normalizedPage === "account";
+
+  els.homePage.hidden = !catalogActive;
   els.catalogPage.hidden = !catalogActive;
-  els.opportunitiesPage.hidden = !opportunitiesActive;
-  els.quotePage.hidden = !quoteActive;
-  els.navHome.classList.toggle("is-active", homeActive);
-  els.navCollection.classList.toggle("is-active", collectionActive);
+  els.collectionPage.hidden = !bindersActive;
+  els.bindersPage.hidden = !bindersActive;
+  els.addCardsPage.hidden = !bindersActive;
+  els.quotePage.hidden = !bindersActive;
+  els.opportunitiesPage.hidden = true;
+  els.accountPage.hidden = !accountActive;
+
+  els.navHome.classList.toggle("is-active", catalogActive);
+  els.navCollection.classList.toggle("is-active", bindersActive);
   els.navBinders.classList.toggle("is-active", bindersActive);
-  els.navAddCards.classList.toggle("is-active", addCardsActive);
+  els.navAddCards.classList.toggle("is-active", bindersActive);
   els.navCatalog.classList.toggle("is-active", catalogActive);
-  els.navOpportunities.classList.toggle("is-active", opportunitiesActive);
-  els.navQuote.classList.toggle("is-active", quoteActive);
+  els.navOpportunities.classList.toggle("is-active", false);
+  els.navQuote.classList.toggle("is-active", bindersActive);
+  els.navAccount.classList.toggle("is-active", accountActive);
+  els.mobileNavCatalog.classList.toggle("is-active", catalogActive);
+  els.mobileNavBinders.classList.toggle("is-active", bindersActive);
+  els.mobileNavAccount.classList.toggle("is-active", accountActive);
+
+  if (bindersActive) {
+    renderCollection().catch((error) => {
+      els.collectionSummary.textContent = `Collection indisponible: ${String(error)}`;
+    });
+  }
 }
 
 function trendClass(value) {
@@ -1631,6 +1650,7 @@ async function bootstrap() {
     els.opportunitiesNote.textContent = String(error);
   }
   renderQuote();
+  switchPage("catalog");
 }
 
 els.cardSearch.addEventListener("input", () => {
@@ -1721,16 +1741,20 @@ els.budgetButton.addEventListener("click", async () => {
   state.budget = Number(els.budgetInput.value) || 10;
   await loadOpportunities();
 });
-els.navHome.addEventListener("click", () => switchPage("home"));
+els.navHome.addEventListener("click", () => switchPage("catalog"));
 els.navCollection.addEventListener("click", async () => {
-  switchPage("collection");
+  switchPage("binders");
   await renderCollection();
 });
 els.navBinders.addEventListener("click", () => switchPage("binders"));
-els.navAddCards.addEventListener("click", () => switchPage("add-cards"));
+els.navAddCards.addEventListener("click", () => switchPage("binders"));
 els.navCatalog.addEventListener("click", () => switchPage("catalog"));
-els.navOpportunities.addEventListener("click", () => switchPage("opportunities"));
-els.navQuote.addEventListener("click", () => switchPage("quote"));
+els.navOpportunities.addEventListener("click", () => switchPage("catalog"));
+els.navQuote.addEventListener("click", () => switchPage("binders"));
+els.navAccount.addEventListener("click", () => switchPage("account"));
+els.mobileNavCatalog.addEventListener("click", () => switchPage("catalog"));
+els.mobileNavBinders.addEventListener("click", () => switchPage("binders"));
+els.mobileNavAccount.addEventListener("click", () => switchPage("account"));
 els.dialogAddQuote.addEventListener("click", () => {
   if (state.currentDetailCard) {
     prepareQuoteDraft(state.currentDetailCard);

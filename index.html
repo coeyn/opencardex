@@ -17,17 +17,25 @@
   </head>
   <body>
     <div class="top-nav">
-      <button id="nav-home" class="nav-button" type="button">Accueil</button>
-      <button id="nav-collection" class="nav-button" type="button">Ma collection</button>
-      <button id="nav-binders" class="nav-button" type="button">Mes classeurs</button>
-      <button id="nav-add-cards" class="nav-button" type="button">Ajouter des cartes</button>
+      <div class="brand-mark">
+        <span class="brand-symbol">OC</span>
+        <span>OpenCardex</span>
+      </div>
       <button id="nav-catalog" class="nav-button is-active" type="button">Catalogue</button>
-      <button id="nav-opportunities" class="nav-button" type="button">Screener achat</button>
-      <button id="nav-quote" class="nav-button" type="button">Devis</button>
+      <button id="nav-binders" class="nav-button" type="button">Classeur</button>
+      <button id="nav-account" class="nav-button" type="button">Compte</button>
       <div class="nav-quote-summary">
         <span id="nav-quote-count" class="meta-chip">0 carte</span>
         <span id="nav-quote-total" class="meta-chip">0,00 €</span>
       </div>
+    </div>
+
+    <div class="legacy-nav" hidden>
+      <button id="nav-home" class="nav-button" type="button">Accueil</button>
+      <button id="nav-collection" class="nav-button" type="button">Ma collection</button>
+      <button id="nav-add-cards" class="nav-button" type="button">Ajouter des cartes</button>
+      <button id="nav-opportunities" class="nav-button" type="button">Screener achat</button>
+      <button id="nav-quote" class="nav-button" type="button">Devis</button>
     </div>
 
     <section id="home-page" class="screen-page" hidden>
@@ -240,6 +248,64 @@
         </section>
       </main>
     </section>
+
+    <section id="account-page" class="screen-page" hidden>
+      <main class="screener-layout account-layout">
+        <section class="opportunities-panel">
+          <div class="opportunities-head">
+            <div>
+              <p class="eyebrow">Compte</p>
+              <h2>Parametres</h2>
+              <p class="subtitle">
+                La sauvegarde et la synchronisation des donnees locales seront regroupees ici.
+              </p>
+            </div>
+          </div>
+          <div class="settings-grid">
+            <article class="setting-card">
+              <span class="setting-icon">ID</span>
+              <h3>Profil local</h3>
+              <p class="subtitle">Gestion du profil et des preferences de l'application.</p>
+            </article>
+            <article class="setting-card">
+              <span class="setting-icon">DB</span>
+              <h3>Sauvegarde</h3>
+              <p class="subtitle">Export, import et sauvegarde cloud de la collection.</p>
+            </article>
+            <article class="setting-card">
+              <span class="setting-icon">PWA</span>
+              <h3>Installation</h3>
+              <p class="subtitle">Controle de l'installation mobile et du cache hors ligne.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </section>
+
+    <nav class="mobile-tabbar" aria-label="Navigation mobile">
+      <button id="mobile-nav-catalog" class="mobile-tab is-active" type="button" aria-label="Catalogue">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"></path>
+          <path d="M4 5.5A2.5 2.5 0 0 0 6.5 8H20"></path>
+        </svg>
+        <span>Catalogue</span>
+      </button>
+      <button id="mobile-nav-binders" class="mobile-tab" type="button" aria-label="Classeur">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 5h16v14H4z"></path>
+          <path d="M8 5v14"></path>
+          <path d="M4 9h4"></path>
+        </svg>
+        <span>Classeur</span>
+      </button>
+      <button id="mobile-nav-account" class="mobile-tab" type="button" aria-label="Compte">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="8" r="4"></circle>
+          <path d="M4 21a8 8 0 0 1 16 0"></path>
+        </svg>
+        <span>Compte</span>
+      </button>
+    </nav>
 
     <dialog id="card-dialog" class="card-dialog">
       <div class="dialog-layout">
