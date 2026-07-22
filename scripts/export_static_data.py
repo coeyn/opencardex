@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
@@ -363,7 +363,7 @@ def export_version(connection, output_dir: Path) -> None:
         output_dir / "version.json",
         {
             "schema": 1,
-            "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
             "last_price_update": row["last_price_update"] if row else None,
             "counts": counts,
         },

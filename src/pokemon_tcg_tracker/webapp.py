@@ -168,7 +168,7 @@ def build_catalog_slope_status(history: list[dict[str, object]]) -> dict[str, st
     if denominator == 0:
         return {"state": "stable", "label": "=", "delta_pct": None, "points": len(window)}
 
-    slope = sum((x - x_mean) * (y - y_mean) for x, y in zip(x_values, y_values, strict=False)) / denominator
+    slope = sum((x - x_mean) * (y - y_mean) for x, y in zip(x_values, y_values)) / denominator
     projected_first = y_mean + slope * (x_values[0] - x_mean)
     projected_last = y_mean + slope * (x_values[-1] - x_mean)
     delta_pct = compute_percent_change(projected_last, projected_first)
