@@ -214,7 +214,7 @@ async function fetchStaticJsonFallback(url) {
 }
 
 async function fetchStaticJson(path) {
-  const response = await fetch(path);
+  const response = await fetch(path, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Static data unavailable: ${path}`);
   }
