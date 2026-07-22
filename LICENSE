@@ -1,0 +1,9 @@
+OpenCardex does not have a final open source license selected yet.
+
+Recommended options:
+
+- MIT for a permissive project that maximizes reuse.
+- Apache-2.0 for permissive reuse with an explicit patent grant.
+- AGPL-3.0 if hosted service modifications must remain open.
+
+Before publishing the repository, replace this notice with the chosen license text.
