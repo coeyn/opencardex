@@ -8,6 +8,10 @@ OpenCardex repose actuellement sur trois couches.
 
 Les données personnelles de collection sont stockées côté navigateur en IndexedDB. Elles ne sont pas mélangées à la base SQLite de catalogue/prix.
 
+## Hebergement GitHub Pages
+
+GitHub Pages publie le dossier `web/` via `.github/workflows/pages.yml`. Cet hebergement sert uniquement les fichiers statiques. Les endpoints `/api/...` restent fournis par le serveur Python local tant qu'un backend public n'a pas ete ajoute.
+
 ## Données distantes et locales
 
 - TCGdex fournit les séries, extensions, cartes, images et prix bruts accessibles via l'API TCGdex.

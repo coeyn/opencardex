@@ -223,7 +223,7 @@ async function updateSearchSuggestions(query) {
 
   try {
     const payload = await fetchJson(
-      `/api/search/suggestions?q=${encodeURIComponent(normalized)}&limit=8`,
+      `api/search/suggestions?q=${encodeURIComponent(normalized)}&limit=8`,
     );
     if (requestId !== searchSuggestionRequestId) {
       return;
@@ -313,7 +313,7 @@ async function getCardDetailCached(cardId) {
   if (state.cardDetailsCache.has(cardId)) {
     return state.cardDetailsCache.get(cardId);
   }
-  const detail = await fetchJson(`/api/cards/${encodeURIComponent(cardId)}`);
+  const detail = await fetchJson(`api/cards/${encodeURIComponent(cardId)}`);
   state.cardDetailsCache.set(cardId, detail);
   return detail;
 }
@@ -841,7 +841,7 @@ async function confirmOwnedCardDraft() {
 async function searchOwnedCards() {
   const query = els.ownedCardSearch.value.trim();
   if (!query) return;
-  const payload = await fetchJson(`/api/search/cards?q=${encodeURIComponent(query)}&limit=60`);
+  const payload = await fetchJson(`api/search/cards?q=${encodeURIComponent(query)}&limit=60`);
   els.ownedCardSearchResults.innerHTML = "";
   const cards = payload.cards || [];
   if (!cards.length) {
@@ -898,7 +898,7 @@ function escapeHtml(value) {
 }
 
 async function loadOpportunities() {
-  const payload = await fetchJson(`/api/opportunities?budget=${state.budget}&limit=18`);
+  const payload = await fetchJson(`api/opportunities?budget=${state.budget}&limit=18`);
   const minPrice = payload.min_price ?? 0;
   els.opportunitiesNote.textContent =
     `Cartes entre ${formatPrice(minPrice)} et ${formatPrice(state.budget)} avec momentum positif base locale (tendance).`;
@@ -1373,7 +1373,7 @@ function renderHistory(timeline) {
 }
 
 async function openCardDetail(cardId) {
-  const data = await fetchJson(`/api/cards/${cardId}`);
+  const data = await fetchJson(`api/cards/${cardId}`);
   const latest = data.latest_price || {};
   const timelineData = buildPriceTimeline(data);
   const timeline = timelineData.points;
@@ -1429,7 +1429,7 @@ async function loadSet(setId) {
   state.searchMode = false;
   renderSeries();
 
-  const setData = await fetchJson(`/api/sets/${setId}`);
+  const setData = await fetchJson(`api/sets/${setId}`);
   state.activeSetData = setData;
   state.activeSetCards = setData.cards;
 
@@ -1442,7 +1442,7 @@ async function loadSet(setId) {
 }
 
 async function searchCards(query) {
-  const payload = await fetchJson(`/api/search/cards?q=${encodeURIComponent(query)}&limit=120`);
+  const payload = await fetchJson(`api/search/cards?q=${encodeURIComponent(query)}&limit=120`);
   state.searchMode = true;
   state.activeSetCards = payload.cards || [];
   els.setTitle.textContent = `Recherche: ${payload.query}`;
@@ -1455,24 +1455,31 @@ async function searchCards(query) {
 async function bootstrap() {
   loadQuote();
   await loadCollectionData();
-  const payload = await fetchJson("/api/series");
-  state.series = payload.series;
   els.sortField.value = state.sortField;
   els.sortDirection.value = state.sortDirection;
 
-  const orderedSeries = getOrderedSeries(state.series);
-  const allSets = orderedSeries.flatMap((serie) => serie.sets);
-  const preferredSet = allSets[0];
-  state.activeSetId = preferredSet?.id ?? null;
-  renderSeries();
+  try {
+    const payload = await fetchJson("api/series");
+    state.series = payload.series;
+    const orderedSeries = getOrderedSeries(state.series);
+    const allSets = orderedSeries.flatMap((serie) => serie.sets);
+    const preferredSet = allSets[0];
+    state.activeSetId = preferredSet?.id ?? null;
+    renderSeries();
 
-  if (state.activeSetId) {
-    await loadSet(state.activeSetId);
-  } else {
-    els.setTitle.textContent = "Aucune extension disponible";
+    if (state.activeSetId) {
+      await loadSet(state.activeSetId);
+    } else {
+      els.setTitle.textContent = "Aucune extension disponible";
+    }
+
+    await loadOpportunities();
+  } catch (error) {
+    els.setTitle.textContent = "Catalogue indisponible";
+    els.setMeta.textContent =
+      "Le catalogue et les prix demandent le serveur Python local. La version GitHub Pages sert uniquement l'application statique.";
+    els.opportunitiesNote.textContent = String(error);
   }
-
-  await loadOpportunities();
   renderQuote();
 }
 

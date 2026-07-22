@@ -79,6 +79,16 @@ La PWA est servie depuis `web/`:
 
 Le service worker met en cache le squelette applicatif, pas les endpoints `/api/` de prix/catalogue. Les prix restent donc actualisables independamment du code.
 
+## GitHub Pages
+
+Le dossier `web/` est publie par GitHub Actions sur GitHub Pages:
+
+```text
+https://coeyn.github.io/opencardex/
+```
+
+Cette version Pages heberge l'application statique et la couche IndexedDB locale. Le catalogue, la recherche TCGdex locale et les prix demandent encore le serveur Python, car les routes `/api/...` ne sont pas disponibles sur GitHub Pages.
+
 ## Donnees locales
 
 - Catalogue et prix: SQLite (`data/tracker.db` ou snapshot configure).
