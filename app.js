@@ -1513,7 +1513,7 @@ async function openCardDetail(cardId) {
 
   els.dialogLocalId.textContent = data.local_id || "Sans numero";
   els.dialogTitle.textContent = data.name;
-  els.dialogSubtitle.textContent = [data.set_name, data.rarity, data.illustrator]
+  els.dialogSubtitle.textContent = [data.set_name, data.local_id]
     .filter(Boolean)
     .join(" - ");
   const activeSetLogo =
@@ -1527,12 +1527,12 @@ async function openCardDetail(cardId) {
   els.dialogImage.src = data.image_url || "";
   els.dialogImage.alt = data.name;
   els.dialogImage.hidden = !data.image_url;
-  els.dialogImageNote.textContent =
-    data.image_language === "en"
-      ? "Visuel anglais affiche car le scan FR manque dans TCGdex."
-      : data.image_url
-        ? "Visuel francais."
-        : "Aucun visuel disponible.";
+  els.dialogImageNote.textContent = [
+    data.set_name,
+    data.illustrator ? `Illustrateur: ${data.illustrator}` : null,
+  ]
+    .filter(Boolean)
+    .join(" - ") || "Aucun detail disponible.";
   els.dialogCardmarket.hidden = !data.cardmarket_url;
   els.dialogCardmarket.href = data.cardmarket_url || "#";
   state.currentDetailCard = data;
