@@ -14,6 +14,8 @@ const state = {
   quoteItems: [],
   pendingQuoteDraft: null,
   currentDetailCard: null,
+  currentPage: "catalog",
+  detailReturnPage: "catalog",
   binders: [],
   ownedCards: [],
   pendingOwnedCardDraft: null,
@@ -69,6 +71,7 @@ const els = {
   catalogPage: document.querySelector("#catalog-page"),
   bindersPage: document.querySelector("#binders-page"),
   accountPage: document.querySelector("#account-page"),
+  cardDetailPage: document.querySelector("#card-detail-page"),
   collectionSummary: document.querySelector("#collection-summary"),
   collectionGrid: document.querySelector("#collection-grid"),
   collectionFilterBinder: document.querySelector("#collection-filter-binder"),
@@ -91,13 +94,13 @@ const els = {
   sortDirection: document.querySelector("#sort-direction"),
   setChipTemplate: document.querySelector("#set-chip-template"),
   cardTemplate: document.querySelector("#card-template"),
-  dialog: document.querySelector("#card-dialog"),
   dialogClose: document.querySelector("#dialog-close"),
   dialogImage: document.querySelector("#dialog-image"),
   dialogImageNote: document.querySelector("#dialog-image-note"),
   dialogLocalId: document.querySelector("#dialog-local-id"),
   dialogTitle: document.querySelector("#dialog-title"),
   dialogSubtitle: document.querySelector("#dialog-subtitle"),
+  dialogSetLogo: document.querySelector("#dialog-set-logo"),
   dialogCardmarket: document.querySelector("#dialog-cardmarket"),
   dialogAddQuote: document.querySelector("#dialog-add-quote"),
   dialogAddOwned: document.querySelector("#dialog-add-owned"),
@@ -998,7 +1001,9 @@ function escapeHtml(value) {
 }
 
 function switchPage(page) {
-  const normalizedPage = page === "account"
+  const normalizedPage = page === "detail"
+    ? "detail"
+    : page === "account"
     ? "account"
     : ["collection", "binders", "add-cards", "quote"].includes(page)
       ? "binders"
@@ -1006,10 +1011,12 @@ function switchPage(page) {
   const catalogActive = normalizedPage === "catalog";
   const bindersActive = normalizedPage === "binders";
   const accountActive = normalizedPage === "account";
+  const detailActive = normalizedPage === "detail";
 
   els.catalogPage.hidden = !catalogActive;
   els.bindersPage.hidden = !bindersActive;
   els.accountPage.hidden = !accountActive;
+  els.cardDetailPage.hidden = !detailActive;
 
   els.navBinders.classList.toggle("is-active", bindersActive);
   els.navCatalog.classList.toggle("is-active", catalogActive);
@@ -1017,6 +1024,8 @@ function switchPage(page) {
   els.mobileNavCatalog.classList.toggle("is-active", catalogActive);
   els.mobileNavBinders.classList.toggle("is-active", bindersActive);
   els.mobileNavAccount.classList.toggle("is-active", accountActive);
+  document.body.classList.toggle("is-detail-page", detailActive);
+  state.currentPage = normalizedPage;
 
   if (bindersActive) {
     renderCollection().catch((error) => {
@@ -1317,51 +1326,61 @@ function renderCards() {
 
 function buildChart(timeline, selectedIndex = -1) {
   const width = 640;
-  const height = 240;
-  const padX = 20;
-  const padY = 24;
+  const height = 280;
+  const padLeft = 58;
+  const padRight = 18;
+  const padTop = 18;
+  const padBottom = 42;
   const points = timeline.filter((item) => item.value !== null && item.value !== undefined);
 
   if (points.length === 0) {
     return `
-      <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="rgba(242,234,219,0.35)"></rect>
-      <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#6f5b49" font-size="16">
+      <rect x="0" y="0" width="${width}" height="${height}" rx="8" fill="#f8fafc"></rect>
+      <text x="${width / 2}" y="${height / 2}" text-anchor="middle" fill="#607086" font-size="16">
         Aucun historique de prix disponible
       </text>
     `;
   }
 
   const values = points.map((item) => item.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const min = Math.max(0, rawMin - Math.max((rawMax - rawMin) * 0.12, 0.5));
+  const max = rawMax + Math.max((rawMax - rawMin) * 0.12, 0.5);
   const spread = Math.max(max - min, 1);
+  const chartWidth = width - padLeft - padRight;
+  const chartHeight = height - padTop - padBottom;
 
   const toX = (index) =>
     points.length === 1
       ? width / 2
-      : padX + (index / (points.length - 1)) * (width - padX * 2);
-  const toY = (value) => height - padY - ((value - min) / spread) * (height - padY * 2);
+      : padLeft + (index / (points.length - 1)) * chartWidth;
+  const toY = (value) => padTop + chartHeight - ((value - min) / spread) * chartHeight;
 
   const polyline = points
     .map((item, index) => `${toX(index)},${toY(item.value)}`)
     .join(" ");
 
-  const areaPoints = `${padX},${height - padY} ${polyline} ${width - padX},${height - padY}`;
-  const last = points[points.length - 1];
-  const lastX = toX(points.length - 1);
-  const lastY = toY(last.value);
+  const baseline = padTop + chartHeight;
+  const areaPoints = `${padLeft},${baseline} ${polyline} ${padLeft + chartWidth},${baseline}`;
 
-  const labels = points
+  const yGrid = Array.from({ length: 5 }, (_, index) => {
+    const ratio = index / 4;
+    const value = max - ratio * spread;
+    const y = padTop + ratio * chartHeight;
+    return `
+      <line x1="${padLeft}" y1="${y}" x2="${padLeft + chartWidth}" y2="${y}" stroke="#d9dee9" stroke-width="1"></line>
+      <text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" fill="#607086" font-size="11">${formatPrice(value)}</text>
+    `;
+  }).join("");
+
+  const xLabels = points
     .map((item, index) => {
-      const step = Math.max(1, Math.ceil(points.length / 6));
-      const shouldShowLabel =
-        index === 0 || index === points.length - 1 || index % step === 0;
-      if (!shouldShowLabel) {
-        return "";
-      }
+      const step = Math.max(1, Math.ceil((points.length - 1) / 4));
+      if (index !== 0 && index !== points.length - 1 && index % step !== 0) return "";
       const x = toX(index);
       const anchor = index === 0 ? "start" : index === points.length - 1 ? "end" : "middle";
-      return `<text x="${x}" y="${height - 6}" text-anchor="${anchor}" fill="#6f5b49" font-size="11">${item.label}</text>`;
+      return `<text x="${x}" y="${height - 12}" text-anchor="${anchor}" fill="#607086" font-size="11">${item.label}</text>`;
     })
     .join("");
 
@@ -1376,9 +1395,9 @@ function buildChart(timeline, selectedIndex = -1) {
           data-point-index="${index}"
           cx="${x}"
           cy="${y}"
-          r="${isSelected ? 8 : 6}"
-          fill="${isSelected ? "#20140d" : "#8b3e18"}"
-          stroke="${isSelected ? "#fff8ef" : "transparent"}"
+          r="${isSelected ? 7 : 4}"
+          fill="${isSelected ? "#163f7a" : "#2457a6"}"
+          stroke="#ffffff"
           stroke-width="${isSelected ? 3 : 0}"
           style="cursor:pointer"
         ></circle>
@@ -1389,30 +1408,25 @@ function buildChart(timeline, selectedIndex = -1) {
   return `
     <defs>
       <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="rgba(198,102,47,0.35)"></stop>
-        <stop offset="100%" stop-color="rgba(198,102,47,0.04)"></stop>
+        <stop offset="0%" stop-color="rgba(36,87,166,0.22)"></stop>
+        <stop offset="100%" stop-color="rgba(36,87,166,0.02)"></stop>
       </linearGradient>
     </defs>
-    <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="rgba(242,234,219,0.35)"></rect>
+    <rect x="0" y="0" width="${width}" height="${height}" rx="8" fill="#f8fafc"></rect>
+    ${yGrid}
+    <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${baseline}" stroke="#a9b5c7" stroke-width="1.5"></line>
+    <line x1="${padLeft}" y1="${baseline}" x2="${padLeft + chartWidth}" y2="${baseline}" stroke="#a9b5c7" stroke-width="1.5"></line>
     <polyline points="${areaPoints}" fill="url(#chartFill)" stroke="none"></polyline>
     <polyline
       points="${polyline}"
       fill="none"
-      stroke="#c6662f"
-      stroke-width="4"
+      stroke="#2457a6"
+      stroke-width="3"
       stroke-linecap="round"
       stroke-linejoin="round"
     ></polyline>
-    <circle cx="${lastX}" cy="${lastY}" r="6" fill="#8b3e18" opacity="0.35"></circle>
     ${pointMarkers}
-    <text x="${padX}" y="20" fill="#6f5b49" font-size="12">Min ${formatPrice(min)}</text>
-    <text x="${width - padX}" y="20" text-anchor="end" fill="#6f5b49" font-size="12">
-      Max ${formatPrice(max)}
-    </text>
-    <text x="${width - padX}" y="${height - 10}" text-anchor="end" fill="#6f5b49" font-size="12">
-      Dernier ${formatPrice(last.value)}
-    </text>
-    ${labels}
+    ${xLabels}
   `;
 }
 
@@ -1491,6 +1505,7 @@ function renderHistory(timeline) {
 }
 
 async function openCardDetail(cardId) {
+  state.detailReturnPage = state.currentPage === "detail" ? state.detailReturnPage : state.currentPage;
   const data = await fetchJson(`api/cards/${cardId}`);
   const latest = data.latest_price || {};
   const timelineData = buildPriceTimeline(data);
@@ -1501,6 +1516,13 @@ async function openCardDetail(cardId) {
   els.dialogSubtitle.textContent = [data.set_name, data.rarity, data.illustrator]
     .filter(Boolean)
     .join(" - ");
+  const activeSetLogo =
+    state.activeSetData?.id === data.set_id
+      ? state.activeSetData.symbol_url || state.activeSetData.logo_url || ""
+      : "";
+  const setLogoUrl = data.set_symbol_url || data.set_logo_url || data.symbol_url || activeSetLogo;
+  els.dialogSetLogo.src = setLogoUrl;
+  els.dialogSetLogo.hidden = !setLogoUrl;
 
   els.dialogImage.src = data.image_url || "";
   els.dialogImage.alt = data.name;
@@ -1526,7 +1548,7 @@ async function openCardDetail(cardId) {
     .join(" | ") || "N/A";
   els.dialogReverse.textContent = formatUsdPrice(latest.tcgplayer_reverse_market);
   els.dialogChange.textContent = formatPercent(data.change_pct?.avg);
-  els.dialogChange.className = "";
+  els.dialogChange.className = "detail-change";
   addTrendClass(els.dialogChange, data.change_pct?.avg);
   els.dialogHistoryMode.textContent = timelineData.mode;
   els.dialogHistoryCount.textContent = `${timeline.length} points`;
@@ -1537,9 +1559,8 @@ async function openCardDetail(cardId) {
   renderSelectedChartPoint();
   renderHistory(timeline);
 
-  if (!els.dialog.open) {
-    els.dialog.showModal();
-  }
+  switchPage("detail");
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 async function loadSet(setId) {
@@ -1770,18 +1791,7 @@ els.quoteResetButton.addEventListener("click", () => {
 });
 els.quoteDraftConfirm.addEventListener("click", () => confirmPendingQuoteDraft());
 els.quoteDraftCancel.addEventListener("click", () => cancelPendingQuoteDraft());
-els.dialogClose.addEventListener("click", () => els.dialog.close());
-els.dialog.addEventListener("click", (event) => {
-  const rect = els.dialog.getBoundingClientRect();
-  const inside =
-    rect.top <= event.clientY &&
-    event.clientY <= rect.top + rect.height &&
-    rect.left <= event.clientX &&
-    event.clientX <= rect.left + rect.width;
-  if (!inside) {
-    els.dialog.close();
-  }
-});
+els.dialogClose.addEventListener("click", () => switchPage(state.detailReturnPage || "catalog"));
 
 bootstrap().catch((error) => {
   els.setTitle.textContent = "Erreur de chargement";

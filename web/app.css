@@ -93,12 +93,20 @@ h2 {
   backdrop-filter: blur(16px);
 }
 
+body.is-detail-page .top-nav,
+body.is-detail-page .mobile-tabbar {
+  display: none;
+}
+
+body.is-detail-page {
+  padding-bottom: 0;
+}
+
 .brand-mark,
 .desktop-nav,
 .nav-quote-summary,
 .hero-badges,
 .controls,
-.dialog-actions,
 .quote-draft-actions,
 .chart-head,
 .history-head,
@@ -267,7 +275,6 @@ h2 {
 }
 
 .panel,
-.dialog-layout,
 .quote-draft-panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -305,7 +312,6 @@ h2 {
 .binder-card,
 .owned-card,
 .setting-card,
-.stat-box,
 .chart-panel,
 .history-panel,
 .quote-row {
@@ -860,60 +866,78 @@ select:focus {
   gap: 8px;
 }
 
-.card-dialog {
-  width: min(1120px, calc(100vw - 20px));
-  max-width: calc(100vw - 20px);
-  max-height: calc(100dvh - 20px);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  overflow: hidden;
-}
-
-.card-dialog::backdrop {
-  background: rgba(17, 24, 39, 0.48);
-}
-
-.dialog-layout {
-  position: relative;
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 20px;
-  padding: 20px;
-  width: 100%;
-  max-width: 100%;
-  max-height: calc(100dvh - 20px);
-  overflow-y: auto;
+.card-detail-page {
+  max-width: 980px;
+  margin: 0 auto;
   overflow-x: hidden;
 }
 
-.dialog-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #fff;
-  font-weight: 800;
-}
-
-.dialog-visual,
-.dialog-copy {
-  min-width: 0;
+.detail-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 35;
   display: grid;
-  gap: 14px;
-  align-content: start;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  background: rgba(245, 247, 251, 0.96);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(16px);
 }
 
-.dialog-visual img {
+.detail-title-block {
+  min-width: 0;
+}
+
+.detail-title-block h1 {
+  overflow: hidden;
+  font-size: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-set-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.detail-set-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.detail-set-line .subtitle {
+  overflow: hidden;
+  margin-top: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-page-layout {
+  display: grid;
+  gap: 16px;
   width: 100%;
+  min-width: 0;
+  padding-top: 16px;
+}
+
+.detail-photo-panel {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.detail-photo-panel img {
+  width: min(360px, 82vw);
   max-width: 100%;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel-soft);
+  object-fit: contain;
+  filter: drop-shadow(0 18px 28px rgba(17, 24, 39, 0.2));
 }
 
 .image-note {
@@ -921,18 +945,40 @@ select:focus {
   font-size: 13px;
 }
 
-.detail-stats {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+.detail-price-panel {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 10px;
   min-width: 0;
 }
 
-.stat-box,
+.detail-trend-card,
 .chart-panel,
 .history-panel {
   min-width: 0;
   padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.detail-trend-card {
+  display: grid;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.detail-trend-card strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.detail-change {
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .stat-label,
@@ -944,15 +990,11 @@ select:focus {
   text-transform: uppercase;
 }
 
-.stat-box strong {
-  font-size: 18px;
-}
-
 #dialog-chart {
   display: block;
   max-width: 100%;
   width: 100%;
-  height: 240px;
+  height: clamp(240px, 42vw, 340px);
   overflow: hidden;
 }
 
@@ -1065,16 +1107,6 @@ select:focus {
 
 .mobile-tab.is-active {
   color: var(--accent-strong);
-}
-
-@media (max-width: 1080px) {
-  .dialog-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .detail-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 720px) {
@@ -1192,47 +1224,14 @@ select:focus {
     font-size: 15px;
   }
 
-  .detail-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .card-dialog {
-    width: calc(100vw - 12px);
-    max-width: calc(100vw - 12px);
-    max-height: calc(100dvh - 12px);
-  }
-
-  .dialog-layout {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    max-height: calc(100dvh - 12px);
-    padding: 12px;
-  }
-
-  .dialog-visual img {
-    width: min(240px, 72vw);
-    margin: 0 auto;
-  }
-
-  .dialog-copy h2 {
-    padding-right: 42px;
-    overflow-wrap: anywhere;
-  }
-
-  .dialog-actions,
   .chart-head,
   .history-head,
   .chart-head-meta {
     flex-wrap: wrap;
   }
 
-  .dialog-actions > *,
   .chart-head-meta > * {
     min-width: 0;
-  }
-
-  .stat-box strong {
-    overflow-wrap: anywhere;
   }
 
   .history-row,
