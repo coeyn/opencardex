@@ -877,10 +877,10 @@ select:focus {
   top: 0;
   z-index: 35;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
-  gap: 10px;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  gap: 8px;
   align-items: center;
-  padding: 10px 0;
+  padding: 8px 0;
   background: rgba(245, 247, 251, 0.96);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
@@ -892,7 +892,8 @@ select:focus {
 
 .detail-title-block h1 {
   overflow: hidden;
-  font-size: 22px;
+  font-size: 17px;
+  line-height: 1.12;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -900,13 +901,13 @@ select:focus {
 .detail-set-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .detail-set-logo {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
   flex: 0 0 auto;
 }
@@ -914,8 +915,20 @@ select:focus {
 .detail-set-line .subtitle {
   overflow: hidden;
   margin-top: 0;
+  font-size: 12px;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.detail-topbar .icon-button {
+  width: 38px;
+  height: 38px;
+}
+
+.detail-topbar .icon-button svg {
+  width: 20px;
+  height: 20px;
 }
 
 .detail-page-layout {
