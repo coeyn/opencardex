@@ -596,11 +596,14 @@ function updateQuoteItem(cardId, field, value) {
 function renderQuote() {
   const total = state.quoteItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
   const cardCount = state.quoteItems.reduce((sum, item) => sum + item.quantity, 0);
-  els.quoteCount.textContent = `${cardCount} carte(s)`;
-  els.quoteTotal.textContent = formatPrice(total);
-  els.navQuoteCount.textContent = `${cardCount} carte(s)`;
-  els.navQuoteTotal.textContent = formatPrice(total);
+  if (els.quoteCount) els.quoteCount.textContent = `${cardCount} carte(s)`;
+  if (els.quoteTotal) els.quoteTotal.textContent = formatPrice(total);
+  if (els.navQuoteCount) els.navQuoteCount.textContent = `${cardCount} carte(s)`;
+  if (els.navQuoteTotal) els.navQuoteTotal.textContent = formatPrice(total);
 
+  if (!els.quoteList) {
+    return;
+  }
   els.quoteList.innerHTML = "";
   if (!state.quoteItems.length) {
     els.quoteList.innerHTML = "<p class='subtitle'>Aucune carte dans le devis.</p>";
@@ -739,7 +742,9 @@ async function loadCollectionData() {
   renderCollectionFilters();
   renderOwnedDraftBinderOptions();
   renderBinders();
-  await renderCollection();
+  if (els.collectionGrid) {
+    await renderCollection();
+  }
 }
 
 function getBinderName(binderId) {
@@ -776,6 +781,9 @@ async function buildOwnedCardViews() {
 }
 
 function renderCollectionFilters() {
+  if (!els.collectionFilterBinder) {
+    return;
+  }
   const current = els.collectionFilterBinder.value || "all";
   els.collectionFilterBinder.innerHTML = [
     `<option value="all">Tous les classeurs</option>`,
@@ -785,6 +793,9 @@ function renderCollectionFilters() {
 }
 
 async function renderCollection() {
+  if (!els.collectionGrid || !els.collectionFilterBinder || !els.collectionSort || !els.collectionSummary) {
+    return;
+  }
   const selectedBinder = els.collectionFilterBinder.value || "all";
   const views = await buildOwnedCardViews();
   const filtered = views.filter((view) => selectedBinder === "all" || view.ownedCard.binderId === selectedBinder);
@@ -860,15 +871,9 @@ function renderBinders() {
       <p class="subtitle">${escapeHtml(binder.description || "Aucune description")}</p>
       <p class="subtitle">${quantity} carte(s)</p>
       <div class="quote-draft-actions">
-        <button class="nav-button" type="button" data-open-binder="${binder.id}">Voir</button>
         <button class="quote-remove" type="button" data-delete-binder="${binder.id}">Supprimer</button>
       </div>
     `;
-    article.querySelector("[data-open-binder]").addEventListener("click", () => {
-      switchPage("collection");
-      els.collectionFilterBinder.value = binder.id;
-      renderCollection();
-    });
     article.querySelector("[data-delete-binder]").addEventListener("click", async () => {
       if (!confirm("Supprimer ce classeur ? Les cartes resteront dans la collection sans classeur.")) return;
       await OpenCardexStore.deleteBinder(binder.id);
@@ -1030,8 +1035,10 @@ function switchPage(page) {
   state.currentPage = normalizedPage;
 
   if (bindersActive) {
-    renderCollection().catch((error) => {
-      els.collectionSummary.textContent = `Collection indisponible: ${String(error)}`;
+    loadCollectionData().catch((error) => {
+      if (els.binderList) {
+        els.binderList.innerHTML = `<p class='subtitle'>Classeurs indisponibles: ${escapeHtml(String(error))}</p>`;
+      }
     });
   }
 }
@@ -1726,22 +1733,22 @@ els.binderForm.addEventListener("submit", async (event) => {
   els.binderDescription.value = "";
   await loadCollectionData();
 });
-els.collectionFilterBinder.addEventListener("change", () => renderCollection());
-els.collectionSort.addEventListener("change", () => renderCollection());
-els.collectionExportButton.addEventListener("click", () => exportCollectionJson());
-els.collectionImportButton.addEventListener("click", () => {
+els.collectionFilterBinder?.addEventListener("change", () => renderCollection());
+els.collectionSort?.addEventListener("change", () => renderCollection());
+els.collectionExportButton?.addEventListener("click", () => exportCollectionJson());
+els.collectionImportButton?.addEventListener("click", () => {
   els.collectionImportInput.value = "";
   els.collectionImportInput.click();
 });
-els.collectionImportInput.addEventListener("change", async () => {
+els.collectionImportInput?.addEventListener("change", async () => {
   try {
     await importCollectionJson(els.collectionImportInput.files?.[0]);
   } catch (error) {
-    els.collectionSummary.textContent = `Import impossible: ${String(error)}`;
+    if (els.collectionSummary) els.collectionSummary.textContent = `Import impossible: ${String(error)}`;
   }
 });
-els.ownedCardSearchButton.addEventListener("click", () => searchOwnedCards());
-els.ownedCardSearch.addEventListener("keydown", (event) => {
+els.ownedCardSearchButton?.addEventListener("click", () => searchOwnedCards());
+els.ownedCardSearch?.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
     searchOwnedCards();
@@ -1752,21 +1759,21 @@ els.ownedDraftCancel.addEventListener("click", () => {
   state.pendingOwnedCardDraft = null;
   els.ownedCardDraftPanel.hidden = true;
 });
-els.quoteImportButton.addEventListener("click", () => {
+els.quoteImportButton?.addEventListener("click", () => {
   els.quoteImportInput.value = "";
   els.quoteImportInput.click();
 });
-els.quoteImportInput.addEventListener("change", async () => {
+els.quoteImportInput?.addEventListener("change", async () => {
   try {
     await importQuoteFile(els.quoteImportInput.files?.[0]);
   } catch (error) {
-    els.quoteList.innerHTML = `<p class='subtitle'>Import impossible: ${String(error)}</p>`;
+    if (els.quoteList) els.quoteList.innerHTML = `<p class='subtitle'>Import impossible: ${String(error)}</p>`;
   }
 });
-els.quoteSaveButton.addEventListener("click", () => saveQuote());
-els.quoteExportJsonButton.addEventListener("click", () => exportQuoteJson());
-els.quoteExportButton.addEventListener("click", () => exportQuoteCsv());
-els.quoteResetButton.addEventListener("click", () => {
+els.quoteSaveButton?.addEventListener("click", () => saveQuote());
+els.quoteExportJsonButton?.addEventListener("click", () => exportQuoteJson());
+els.quoteExportButton?.addEventListener("click", () => exportQuoteCsv());
+els.quoteResetButton?.addEventListener("click", () => {
   state.quoteItems = [];
   saveQuote();
 });
