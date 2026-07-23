@@ -155,26 +155,41 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">Compte</p>
-              <h2>Parametres</h2>
-              <p class="subtitle">La sauvegarde et la synchronisation des donnees locales seront regroupees ici.</p>
+              <h2>Compte</h2>
+              <p id="account-status" class="subtitle">Connexion Firebase en cours...</p>
             </div>
           </div>
-          <div class="settings-grid">
-            <article class="setting-card">
-              <span class="setting-icon">ID</span>
-              <h3>Profil local</h3>
-              <p class="subtitle">Gestion du profil et des preferences de l'application.</p>
-            </article>
-            <article class="setting-card">
-              <span class="setting-icon">DB</span>
-              <h3>Sauvegarde</h3>
-              <p class="subtitle">Export, import et sauvegarde cloud de la collection.</p>
-            </article>
-            <article class="setting-card">
-              <span class="setting-icon">PWA</span>
-              <h3>Installation</h3>
-              <p class="subtitle">Controle de l'installation mobile et du cache hors ligne.</p>
-            </article>
+          <div class="account-layout">
+            <section class="account-card">
+              <h3>Connexion</h3>
+              <div id="account-signed-out" class="account-stack">
+                <label class="quote-field">
+                  <span class="history-cell-label">Email</span>
+                  <input id="account-email" type="email" autocomplete="email" placeholder="email@exemple.fr" />
+                </label>
+                <label class="quote-field">
+                  <span class="history-cell-label">Mot de passe</span>
+                  <input id="account-password" type="password" autocomplete="current-password" placeholder="Minimum 6 caracteres" />
+                </label>
+                <div class="quote-draft-actions">
+                  <button id="account-email-login" class="primary-button" type="button">Connexion</button>
+                  <button id="account-email-register" class="secondary-button" type="button">Creer compte</button>
+                </div>
+                <button id="account-google-login" class="secondary-button account-wide-button" type="button">Continuer avec Google</button>
+              </div>
+              <div id="account-signed-in" class="account-stack" hidden>
+                <p id="account-user" class="subtitle"></p>
+                <button id="account-logout" class="secondary-button account-wide-button" type="button">Deconnexion</button>
+              </div>
+            </section>
+            <section class="account-card">
+              <h3>Synchronisation</h3>
+              <p id="account-sync-meta" class="subtitle">Connecte-toi pour sauvegarder tes classeurs dans le cloud.</p>
+              <div class="quote-draft-actions">
+                <button id="account-cloud-upload" class="primary-button" type="button" disabled>Envoyer local</button>
+                <button id="account-cloud-download" class="secondary-button" type="button" disabled>Restaurer cloud</button>
+              </div>
+            </section>
           </div>
         </section>
       </main>
@@ -496,6 +511,7 @@
 
     <script src="storage.js" defer></script>
     <script src="pwa.js" defer></script>
+    <script type="module" src="firebase-sync.js"></script>
     <script src="app.js" defer></script>
   </body>
 </html>

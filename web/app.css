@@ -866,6 +866,30 @@ select:focus {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+.account-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.account-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+}
+
+.account-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.account-wide-button {
+  width: 100%;
+}
+
 .card-tile {
   position: relative;
   display: block;
