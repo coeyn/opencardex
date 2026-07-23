@@ -19,6 +19,13 @@ const state = {
   binders: [],
   ownedCards: [],
   pokedexPage: 0,
+  binderDetailPage: 0,
+  activeBinderId: null,
+  draggedOwnedCardId: null,
+  touchDraggedOwnedCardId: null,
+  suppressNextBinderClick: false,
+  touchDragTimer: null,
+  binderEdgeTimer: null,
   nationalPokedex: null,
   pendingOwnedCardDraft: null,
   pendingBinderDeleteId: null,
@@ -72,12 +79,16 @@ const els = {
   catalogPage: document.querySelector("#catalog-page"),
   bindersPage: document.querySelector("#binders-page"),
   pokedexPage: document.querySelector("#pokedex-page"),
+  binderDetailPage: document.querySelector("#binder-detail-page"),
   accountPage: document.querySelector("#account-page"),
   cardDetailPage: document.querySelector("#card-detail-page"),
   pokedexBanner: document.querySelector("#pokedex-banner"),
   pokedexBannerMeta: document.querySelector("#pokedex-banner-meta"),
   pokedexBack: document.querySelector("#pokedex-back"),
   pokedexContent: document.querySelector("#pokedex-content"),
+  binderDetailBack: document.querySelector("#binder-detail-back"),
+  binderDetailTitle: document.querySelector("#binder-detail-title"),
+  binderDetailContent: document.querySelector("#binder-detail-content"),
   binderCreateToggle: document.querySelector("#binder-create-toggle"),
   binderCreateModal: document.querySelector("#binder-create-modal"),
   binderCreateCancel: document.querySelector("#binder-create-cancel"),
@@ -1015,7 +1026,11 @@ async function renderBinders() {
       <p class="subtitle">${escapeHtml(binder.description || "Aucune description")}</p>
       <p class="subtitle">${quantity} carte(s)</p>
     `;
-    article.querySelector("[data-delete-binder]")?.addEventListener("click", () => openBinderDeleteModal(binder.id));
+    article.addEventListener("click", () => openBinderDetail(binder.id));
+    article.querySelector("[data-delete-binder]")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openBinderDeleteModal(binder.id);
+    });
     els.binderList.appendChild(article);
   }
 }
@@ -1027,6 +1042,273 @@ function renderOwnedDraftBinderOptions() {
     ? userBinders.map((binder) => `<option value="${binder.id}">${escapeHtml(binder.name)}</option>`).join("")
     : `<option value="">Crée un classeur avant d'ajouter une carte</option>`;
   els.ownedDraftBinder.disabled = !userBinders.length;
+}
+
+function getBinderById(binderId) {
+  return state.binders.find((binder) => binder.id === binderId) || null;
+}
+
+function binderOwnedCards(binderId) {
+  return state.ownedCards.filter((card) => card.binderId === binderId);
+}
+
+function binderPositionKey(page, slot) {
+  return `${page}:${slot}`;
+}
+
+function findFirstFreeBinderPosition(occupied) {
+  for (let page = 1; page < 500; page += 1) {
+    for (let slot = 1; slot <= 9; slot += 1) {
+      const key = binderPositionKey(page, slot);
+      if (!occupied.has(key)) {
+        return { page, slot, key };
+      }
+    }
+  }
+  return { page: 1, slot: 1, key: "1:1" };
+}
+
+async function ensureBinderPositions(binderId) {
+  const cards = binderOwnedCards(binderId).sort((left, right) =>
+    String(left.createdAt || "").localeCompare(String(right.createdAt || "")),
+  );
+  const occupied = new Set();
+  let changed = false;
+  for (const card of cards) {
+    const page = Number(card.page);
+    const slot = Number(card.slot);
+    const hasValidPosition = Number.isInteger(page) && page > 0 && Number.isInteger(slot) && slot >= 1 && slot <= 9;
+    const key = hasValidPosition ? binderPositionKey(page, slot) : "";
+    if (hasValidPosition && !occupied.has(key)) {
+      occupied.add(key);
+      continue;
+    }
+    const next = findFirstFreeBinderPosition(occupied);
+    occupied.add(next.key);
+    await OpenCardexStore.saveOwnedCard({ ...card, page: next.page, slot: next.slot });
+    card.page = next.page;
+    card.slot = next.slot;
+    changed = true;
+  }
+  if (changed) {
+    state.ownedCards = await OpenCardexStore.getOwnedCards();
+  }
+}
+
+async function buildBinderSlotViews(binderId) {
+  await ensureBinderPositions(binderId);
+  const views = await Promise.all(binderOwnedCards(binderId).map(getOwnedCardView));
+  const byPosition = new Map();
+  let maxPage = 1;
+  for (const view of views) {
+    const page = Math.max(1, Number(view.ownedCard.page) || 1);
+    const slot = Math.min(9, Math.max(1, Number(view.ownedCard.slot) || 1));
+    maxPage = Math.max(maxPage, page);
+    byPosition.set(binderPositionKey(page, slot), view);
+  }
+  const lastPageFull = Array.from({ length: 9 }, (_, index) => index + 1).every((slot) =>
+    byPosition.has(binderPositionKey(maxPage, slot)),
+  );
+  return { byPosition, pageCount: lastPageFull ? maxPage + 1 : maxPage };
+}
+
+async function moveOwnedCardToSlot(ownedCardId, targetPage, targetSlot) {
+  const source = state.ownedCards.find((card) => card.id === ownedCardId);
+  if (!source || source.binderId !== state.activeBinderId) return;
+  const target = state.ownedCards.find(
+    (card) =>
+      card.binderId === state.activeBinderId &&
+      Number(card.page) === targetPage &&
+      Number(card.slot) === targetSlot &&
+      card.id !== ownedCardId,
+  );
+  const sourcePage = Number(source.page) || 1;
+  const sourceSlot = Number(source.slot) || 1;
+  await OpenCardexStore.saveOwnedCard({ ...source, page: targetPage, slot: targetSlot });
+  if (target) {
+    await OpenCardexStore.saveOwnedCard({ ...target, page: sourcePage, slot: sourceSlot });
+  }
+  await loadCollectionData();
+  await renderBinderDetailPage();
+}
+
+function openBinderDetail(binderId) {
+  state.activeBinderId = binderId;
+  state.binderDetailPage = 0;
+  switchPage("binder-detail");
+}
+
+function scheduleBinderEdgeTurn(slot) {
+  window.clearTimeout(state.binderEdgeTimer);
+  const isLeftEdge = [1, 4, 7].includes(slot);
+  const isRightEdge = [3, 6, 9].includes(slot);
+  if (!isLeftEdge && !isRightEdge) return;
+  state.binderEdgeTimer = window.setTimeout(async () => {
+    const direction = isLeftEdge ? -1 : 1;
+    const article = els.binderDetailContent.querySelector(".binder-page-board");
+    if (!article) return;
+    const pageCount = Number(article.dataset.pageCount || 1);
+    const nextPage = Math.min(Math.max(state.binderDetailPage + direction, 0), pageCount - 1);
+    if (nextPage !== state.binderDetailPage) {
+      state.binderDetailPage = nextPage;
+      await renderBinderDetailPage();
+    }
+  }, 650);
+}
+
+function scheduleBinderEdgeTurnFromPoint(clientX, pageCount) {
+  window.clearTimeout(state.binderEdgeTimer);
+  const board = els.binderDetailContent.querySelector(".binder-page-board");
+  if (!board) return;
+  const rect = board.getBoundingClientRect();
+  const edgeSize = Math.min(72, rect.width * 0.22);
+  const direction = clientX - rect.left < edgeSize ? -1 : rect.right - clientX < edgeSize ? 1 : 0;
+  if (!direction) return;
+  state.binderEdgeTimer = window.setTimeout(async () => {
+    const nextPage = Math.min(Math.max(state.binderDetailPage + direction, 0), pageCount - 1);
+    if (nextPage !== state.binderDetailPage) {
+      state.binderDetailPage = nextPage;
+      await renderBinderDetailPage();
+    }
+  }, 650);
+}
+
+async function renderBinderDetailPage() {
+  const binder = getBinderById(state.activeBinderId);
+  if (!binder || !els.binderDetailContent) return;
+  els.binderDetailTitle.textContent = binder.name;
+  const { byPosition, pageCount } = await buildBinderSlotViews(binder.id);
+  state.binderDetailPage = Math.min(Math.max(state.binderDetailPage, 0), pageCount - 1);
+  const pageNumber = state.binderDetailPage + 1;
+  const article = document.createElement("article");
+  article.className = "binder-page-board";
+  article.dataset.pageCount = String(pageCount);
+  article.innerHTML = `
+    <div class="binder-page-grid">
+      ${Array.from({ length: 9 }, (_, index) => {
+        const slot = index + 1;
+        const view = byPosition.get(binderPositionKey(pageNumber, slot));
+        return `
+          <button class="binder-slot${view ? " has-card" : ""}" type="button" data-slot="${slot}" ${view ? `data-owned-id="${view.ownedCard.id}" draggable="true"` : ""}>
+            ${
+              view?.detail.image_url
+                ? `<img src="${view.detail.image_url}" alt="${escapeHtml(view.detail.name)}" loading="lazy">`
+                : `<span class="binder-empty-slot"></span>`
+            }
+          </button>
+        `;
+      }).join("")}
+    </div>
+    <div class="pokedex-pager binder-pager">
+      <button class="icon-button" type="button" data-binder-prev aria-label="Page precedente">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+      </button>
+      <span>Page ${pageNumber} / ${pageCount}</span>
+      <button class="icon-button" type="button" data-binder-next aria-label="Page suivante">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+      </button>
+    </div>
+  `;
+  els.binderDetailContent.replaceChildren(article);
+
+  article.querySelector("[data-binder-prev]").disabled = state.binderDetailPage <= 0;
+  article.querySelector("[data-binder-next]").disabled = state.binderDetailPage >= pageCount - 1;
+  article.querySelector("[data-binder-prev]").addEventListener("click", async () => {
+    state.binderDetailPage -= 1;
+    await renderBinderDetailPage();
+  });
+  article.querySelector("[data-binder-next]").addEventListener("click", async () => {
+    state.binderDetailPage += 1;
+    await renderBinderDetailPage();
+  });
+
+  let swipeStartX = 0;
+  article.addEventListener("touchstart", (event) => {
+    swipeStartX = event.touches[0]?.clientX || 0;
+  }, { passive: true });
+  article.addEventListener("touchend", async (event) => {
+    const endX = event.changedTouches[0]?.clientX || swipeStartX;
+    const delta = endX - swipeStartX;
+    if (Math.abs(delta) < 50) return;
+    const nextPage = Math.min(Math.max(state.binderDetailPage + (delta < 0 ? 1 : -1), 0), pageCount - 1);
+    if (nextPage !== state.binderDetailPage) {
+      state.binderDetailPage = nextPage;
+      await renderBinderDetailPage();
+    }
+  }, { passive: true });
+
+  article.querySelectorAll(".binder-slot").forEach((slotButton) => {
+    const slot = Number(slotButton.dataset.slot);
+    slotButton.addEventListener("dragstart", (event) => {
+      state.draggedOwnedCardId = slotButton.dataset.ownedId || null;
+      event.dataTransfer?.setData("text/plain", state.draggedOwnedCardId || "");
+    });
+    slotButton.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      scheduleBinderEdgeTurn(slot);
+    });
+    slotButton.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      window.clearTimeout(state.binderEdgeTimer);
+      const ownedCardId = state.draggedOwnedCardId || event.dataTransfer?.getData("text/plain");
+      state.draggedOwnedCardId = null;
+      if (ownedCardId) {
+        await moveOwnedCardToSlot(ownedCardId, pageNumber, slot);
+      }
+    });
+    slotButton.addEventListener("dragend", () => {
+      window.clearTimeout(state.binderEdgeTimer);
+      state.draggedOwnedCardId = null;
+    });
+    slotButton.addEventListener("click", () => {
+      const ownedId = slotButton.dataset.ownedId;
+      if (state.touchDraggedOwnedCardId || state.suppressNextBinderClick) {
+        state.suppressNextBinderClick = false;
+        return;
+      }
+      const owned = state.ownedCards.find((card) => card.id === ownedId);
+      if (owned) openCardDetail(owned.cardId);
+    });
+    slotButton.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" || !slotButton.dataset.ownedId) return;
+      window.clearTimeout(state.touchDragTimer);
+      state.touchDragTimer = window.setTimeout(() => {
+        state.touchDraggedOwnedCardId = slotButton.dataset.ownedId || null;
+        slotButton.classList.add("is-touch-dragging");
+        try {
+          slotButton.setPointerCapture?.(event.pointerId);
+        } catch {
+          // Pointer may have ended before the long-press delay completes.
+        }
+      }, 280);
+    });
+    slotButton.addEventListener("pointermove", (event) => {
+      if (!state.touchDraggedOwnedCardId) return;
+      event.preventDefault();
+      scheduleBinderEdgeTurnFromPoint(event.clientX, pageCount);
+    });
+    slotButton.addEventListener("pointerup", async (event) => {
+      window.clearTimeout(state.touchDragTimer);
+      if (!state.touchDraggedOwnedCardId) return;
+      event.preventDefault();
+      window.clearTimeout(state.binderEdgeTimer);
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest?.(".binder-slot");
+      const targetSlot = Number(target?.dataset?.slot);
+      const ownedCardId = state.touchDraggedOwnedCardId;
+      state.touchDraggedOwnedCardId = null;
+      state.suppressNextBinderClick = true;
+      article.querySelectorAll(".is-touch-dragging").forEach((item) => item.classList.remove("is-touch-dragging"));
+      if (targetSlot) {
+        await moveOwnedCardToSlot(ownedCardId, pageNumber, targetSlot);
+      }
+    });
+    slotButton.addEventListener("pointercancel", () => {
+      window.clearTimeout(state.touchDragTimer);
+      window.clearTimeout(state.binderEdgeTimer);
+      state.touchDraggedOwnedCardId = null;
+      article.querySelectorAll(".is-touch-dragging").forEach((item) => item.classList.remove("is-touch-dragging"));
+    });
+  });
 }
 
 function prepareOwnedCardDraft(card) {
@@ -1154,6 +1436,8 @@ function escapeHtml(value) {
 function switchPage(page) {
   const normalizedPage = page === "detail"
     ? "detail"
+    : page === "binder-detail"
+    ? "binder-detail"
     : page === "pokedex"
     ? "pokedex"
     : page === "account"
@@ -1163,14 +1447,16 @@ function switchPage(page) {
       : "catalog";
   const catalogActive = normalizedPage === "catalog";
   const bindersActive = normalizedPage === "binders";
+  const binderDetailActive = normalizedPage === "binder-detail";
   const pokedexActive = normalizedPage === "pokedex";
   const accountActive = normalizedPage === "account";
   const detailActive = normalizedPage === "detail";
-  const bindersNavActive = bindersActive || pokedexActive;
+  const bindersNavActive = bindersActive || pokedexActive || binderDetailActive;
 
   els.catalogPage.hidden = !catalogActive;
   els.bindersPage.hidden = !bindersActive;
   els.pokedexPage.hidden = !pokedexActive;
+  els.binderDetailPage.hidden = !binderDetailActive;
   els.accountPage.hidden = !accountActive;
   els.cardDetailPage.hidden = !detailActive;
 
@@ -1193,6 +1479,11 @@ function switchPage(page) {
   if (pokedexActive) {
     renderPokedexPage().catch((error) => {
       els.pokedexContent.innerHTML = `<p class='subtitle'>Pokédex indisponible: ${escapeHtml(String(error))}</p>`;
+    });
+  }
+  if (binderDetailActive) {
+    renderBinderDetailPage().catch((error) => {
+      els.binderDetailContent.innerHTML = `<p class='subtitle'>Classeur indisponible: ${escapeHtml(String(error))}</p>`;
     });
   }
 }
@@ -1910,6 +2201,7 @@ els.mobileNavBinders.addEventListener("click", () => switchPage("binders"));
 els.mobileNavAccount.addEventListener("click", () => switchPage("account"));
 els.pokedexBanner?.addEventListener("click", () => switchPage("pokedex"));
 els.pokedexBack?.addEventListener("click", () => switchPage("binders"));
+els.binderDetailBack?.addEventListener("click", () => switchPage("binders"));
 els.dialogAddOwned.addEventListener("click", () => {
   if (state.currentDetailCard) {
     prepareOwnedCardDraft(state.currentDetailCard);
