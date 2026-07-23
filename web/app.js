@@ -25,6 +25,10 @@ const state = {
   touchDraggedOwnedCardId: null,
   suppressNextBinderClick: false,
   touchDragTimer: null,
+  touchDragStartX: 0,
+  touchDragStartY: 0,
+  touchDragPointerId: null,
+  touchDragGhost: null,
   binderEdgeTimer: null,
   nationalPokedex: null,
   pendingOwnedCardDraft: null,
@@ -1132,6 +1136,51 @@ async function moveOwnedCardToSlot(ownedCardId, targetPage, targetSlot) {
   await renderBinderDetailPage();
 }
 
+function setBinderPage(nextPage, pageCount, direction = 0) {
+  const boundedPage = Math.min(Math.max(nextPage, 0), pageCount - 1);
+  if (boundedPage === state.binderDetailPage) return;
+  state.binderPageDirection = direction || (boundedPage > state.binderDetailPage ? 1 : -1);
+  state.binderDetailPage = boundedPage;
+  renderBinderDetailPage().catch((error) => {
+    els.binderDetailContent.innerHTML = `<p class='subtitle'>Classeur indisponible: ${escapeHtml(String(error))}</p>`;
+  });
+}
+
+function removeBinderDragGhost() {
+  state.touchDragGhost?.remove();
+  state.touchDragGhost = null;
+}
+
+function createBinderDragGhost(slotButton, clientX, clientY) {
+  removeBinderDragGhost();
+  const image = slotButton.querySelector("img");
+  if (!image) return;
+  const rect = slotButton.getBoundingClientRect();
+  const ghost = document.createElement("div");
+  ghost.className = "binder-drag-ghost";
+  ghost.style.width = `${rect.width}px`;
+  ghost.style.height = `${rect.height}px`;
+  ghost.innerHTML = `<img src="${image.src}" alt="">`;
+  document.body.appendChild(ghost);
+  state.touchDragGhost = ghost;
+  moveBinderDragGhost(clientX, clientY);
+}
+
+function moveBinderDragGhost(clientX, clientY) {
+  const ghost = state.touchDragGhost;
+  if (!ghost) return;
+  ghost.style.transform = `translate3d(${clientX}px, ${clientY}px, 0) translate(-50%, -50%) rotate(2deg) scale(1.04)`;
+}
+
+function cancelBinderTouchDrag(article) {
+  window.clearTimeout(state.touchDragTimer);
+  window.clearTimeout(state.binderEdgeTimer);
+  state.touchDraggedOwnedCardId = null;
+  state.touchDragPointerId = null;
+  removeBinderDragGhost();
+  article?.querySelectorAll(".is-touch-dragging").forEach((item) => item.classList.remove("is-touch-dragging"));
+}
+
 function openBinderDetail(binderId) {
   state.activeBinderId = binderId;
   state.binderDetailPage = 0;
@@ -1150,8 +1199,7 @@ function scheduleBinderEdgeTurn(slot) {
     const pageCount = Number(article.dataset.pageCount || 1);
     const nextPage = Math.min(Math.max(state.binderDetailPage + direction, 0), pageCount - 1);
     if (nextPage !== state.binderDetailPage) {
-      state.binderDetailPage = nextPage;
-      await renderBinderDetailPage();
+      setBinderPage(nextPage, pageCount, direction);
     }
   }, 650);
 }
@@ -1167,8 +1215,7 @@ function scheduleBinderEdgeTurnFromPoint(clientX, pageCount) {
   state.binderEdgeTimer = window.setTimeout(async () => {
     const nextPage = Math.min(Math.max(state.binderDetailPage + direction, 0), pageCount - 1);
     if (nextPage !== state.binderDetailPage) {
-      state.binderDetailPage = nextPage;
-      await renderBinderDetailPage();
+      setBinderPage(nextPage, pageCount, direction);
     }
   }, 650);
 }
@@ -1182,6 +1229,13 @@ async function renderBinderDetailPage() {
   const pageNumber = state.binderDetailPage + 1;
   const article = document.createElement("article");
   article.className = "binder-page-board";
+  if (state.binderPageDirection) {
+    article.classList.add(state.binderPageDirection > 0 ? "is-page-in-next" : "is-page-in-prev");
+    window.setTimeout(() => {
+      article.classList.remove("is-page-in-next", "is-page-in-prev");
+    }, 260);
+    state.binderPageDirection = 0;
+  }
   article.dataset.pageCount = String(pageCount);
   article.innerHTML = `
     <div class="binder-page-grid">
@@ -1214,12 +1268,10 @@ async function renderBinderDetailPage() {
   article.querySelector("[data-binder-prev]").disabled = state.binderDetailPage <= 0;
   article.querySelector("[data-binder-next]").disabled = state.binderDetailPage >= pageCount - 1;
   article.querySelector("[data-binder-prev]").addEventListener("click", async () => {
-    state.binderDetailPage -= 1;
-    await renderBinderDetailPage();
+    setBinderPage(state.binderDetailPage - 1, pageCount, -1);
   });
   article.querySelector("[data-binder-next]").addEventListener("click", async () => {
-    state.binderDetailPage += 1;
-    await renderBinderDetailPage();
+    setBinderPage(state.binderDetailPage + 1, pageCount, 1);
   });
 
   let swipeStartX = 0;
@@ -1227,13 +1279,14 @@ async function renderBinderDetailPage() {
     swipeStartX = event.touches[0]?.clientX || 0;
   }, { passive: true });
   article.addEventListener("touchend", async (event) => {
+    window.clearTimeout(state.touchDragTimer);
     const endX = event.changedTouches[0]?.clientX || swipeStartX;
     const delta = endX - swipeStartX;
+    if (state.touchDraggedOwnedCardId) return;
     if (Math.abs(delta) < 50) return;
     const nextPage = Math.min(Math.max(state.binderDetailPage + (delta < 0 ? 1 : -1), 0), pageCount - 1);
     if (nextPage !== state.binderDetailPage) {
-      state.binderDetailPage = nextPage;
-      await renderBinderDetailPage();
+      setBinderPage(nextPage, pageCount, delta < 0 ? 1 : -1);
     }
   }, { passive: true });
 
@@ -1272,19 +1325,32 @@ async function renderBinderDetailPage() {
     slotButton.addEventListener("pointerdown", (event) => {
       if (event.pointerType === "mouse" || !slotButton.dataset.ownedId) return;
       window.clearTimeout(state.touchDragTimer);
+      state.touchDragStartX = event.clientX;
+      state.touchDragStartY = event.clientY;
+      state.touchDragPointerId = event.pointerId;
       state.touchDragTimer = window.setTimeout(() => {
         state.touchDraggedOwnedCardId = slotButton.dataset.ownedId || null;
         slotButton.classList.add("is-touch-dragging");
+        createBinderDragGhost(slotButton, event.clientX, event.clientY);
         try {
           slotButton.setPointerCapture?.(event.pointerId);
         } catch {
           // Pointer may have ended before the long-press delay completes.
         }
-      }, 280);
+      }, 650);
     });
     slotButton.addEventListener("pointermove", (event) => {
+      if (!state.touchDraggedOwnedCardId) {
+        const movedBeforeDrag = Math.hypot(event.clientX - state.touchDragStartX, event.clientY - state.touchDragStartY) > 12;
+        if (movedBeforeDrag) {
+          window.clearTimeout(state.touchDragTimer);
+        }
+        return;
+      }
+      if (state.touchDragPointerId !== null && event.pointerId !== state.touchDragPointerId) return;
       if (!state.touchDraggedOwnedCardId) return;
       event.preventDefault();
+      moveBinderDragGhost(event.clientX, event.clientY);
       scheduleBinderEdgeTurnFromPoint(event.clientX, pageCount);
     });
     slotButton.addEventListener("pointerup", async (event) => {
@@ -1296,17 +1362,16 @@ async function renderBinderDetailPage() {
       const targetSlot = Number(target?.dataset?.slot);
       const ownedCardId = state.touchDraggedOwnedCardId;
       state.touchDraggedOwnedCardId = null;
+      state.touchDragPointerId = null;
       state.suppressNextBinderClick = true;
+      removeBinderDragGhost();
       article.querySelectorAll(".is-touch-dragging").forEach((item) => item.classList.remove("is-touch-dragging"));
       if (targetSlot) {
         await moveOwnedCardToSlot(ownedCardId, pageNumber, targetSlot);
       }
     });
     slotButton.addEventListener("pointercancel", () => {
-      window.clearTimeout(state.touchDragTimer);
-      window.clearTimeout(state.binderEdgeTimer);
-      state.touchDraggedOwnedCardId = null;
-      article.querySelectorAll(".is-touch-dragging").forEach((item) => item.classList.remove("is-touch-dragging"));
+      cancelBinderTouchDrag(article);
     });
   });
 }
