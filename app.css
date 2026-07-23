@@ -436,19 +436,6 @@ body.is-detail-page {
   margin-bottom: 12px;
 }
 
-#binders-page .binder-card {
-  padding: 12px 42px 12px 0;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-#binders-page .binder-card.is-system-binder {
-  background: transparent;
-}
-
 .pokedex-banner {
   width: 100%;
   display: flex;
@@ -463,17 +450,6 @@ body.is-detail-page {
   color: var(--text);
   text-align: left;
   box-shadow: var(--shadow);
-}
-
-#binders-page .pokedex-banner {
-  margin-bottom: 12px;
-  padding: 12px 0;
-  border: 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 .pokedex-banner h3 {
@@ -686,13 +662,6 @@ body.is-detail-page {
   font-size: 11px;
   font-weight: 800;
   box-shadow: 0 4px 10px rgba(17, 24, 39, 0.12);
-}
-
-#pokedex-page .pokedex-slot,
-#pokedex-page .pokedex-empty-card,
-#binder-detail-page .binder-slot,
-#binder-detail-page .binder-empty-slot {
-  border-radius: 0;
 }
 
 @keyframes binderPageInNext {
