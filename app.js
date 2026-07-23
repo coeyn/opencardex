@@ -29,6 +29,8 @@ const state = {
   touchDragStartY: 0,
   touchDragPointerId: null,
   touchDragGhost: null,
+  binderDragSourceButton: null,
+  justFinishedBinderDrag: false,
   binderEdgeTimer: null,
   nationalPokedex: null,
   pendingOwnedCardDraft: null,
@@ -1166,6 +1168,20 @@ function createBinderDragGhost(slotButton, clientX, clientY) {
   moveBinderDragGhost(clientX, clientY);
 }
 
+function startBinderPointerDrag(slotButton, event) {
+  const ownedCardId = slotButton.dataset.ownedId || null;
+  if (!ownedCardId) return;
+  state.touchDraggedOwnedCardId = ownedCardId;
+  state.binderDragSourceButton = slotButton;
+  slotButton.classList.add("is-touch-dragging");
+  createBinderDragGhost(slotButton, event.clientX, event.clientY);
+  try {
+    slotButton.setPointerCapture?.(event.pointerId);
+  } catch {
+    // Pointer capture may fail if the pointer has already ended.
+  }
+}
+
 function moveBinderDragGhost(clientX, clientY) {
   const ghost = state.touchDragGhost;
   if (!ghost) return;
@@ -1177,6 +1193,7 @@ function cancelBinderTouchDrag(article) {
   window.clearTimeout(state.binderEdgeTimer);
   state.touchDraggedOwnedCardId = null;
   state.touchDragPointerId = null;
+  state.binderDragSourceButton = null;
   removeBinderDragGhost();
   article?.querySelectorAll(".is-touch-dragging").forEach((item) => item.classList.remove("is-touch-dragging"));
 }
@@ -1243,7 +1260,7 @@ async function renderBinderDetailPage() {
         const slot = index + 1;
         const view = byPosition.get(binderPositionKey(pageNumber, slot));
         return `
-          <button class="binder-slot${view ? " has-card" : ""}" type="button" data-slot="${slot}" ${view ? `data-owned-id="${view.ownedCard.id}" draggable="true"` : ""}>
+          <button class="binder-slot${view ? " has-card" : ""}" type="button" data-slot="${slot}" ${view ? `data-owned-id="${view.ownedCard.id}"` : ""}>
             ${
               view?.detail.image_url
                 ? `<img src="${view.detail.image_url}" alt="${escapeHtml(view.detail.name)}" loading="lazy">`
@@ -1282,6 +1299,7 @@ async function renderBinderDetailPage() {
     window.clearTimeout(state.touchDragTimer);
     const endX = event.changedTouches[0]?.clientX || swipeStartX;
     const delta = endX - swipeStartX;
+    if (state.justFinishedBinderDrag) return;
     if (state.touchDraggedOwnedCardId) return;
     if (Math.abs(delta) < 50) return;
     const nextPage = Math.min(Math.max(state.binderDetailPage + (delta < 0 ? 1 : -1), 0), pageCount - 1);
@@ -1292,27 +1310,6 @@ async function renderBinderDetailPage() {
 
   article.querySelectorAll(".binder-slot").forEach((slotButton) => {
     const slot = Number(slotButton.dataset.slot);
-    slotButton.addEventListener("dragstart", (event) => {
-      state.draggedOwnedCardId = slotButton.dataset.ownedId || null;
-      event.dataTransfer?.setData("text/plain", state.draggedOwnedCardId || "");
-    });
-    slotButton.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      scheduleBinderEdgeTurn(slot);
-    });
-    slotButton.addEventListener("drop", async (event) => {
-      event.preventDefault();
-      window.clearTimeout(state.binderEdgeTimer);
-      const ownedCardId = state.draggedOwnedCardId || event.dataTransfer?.getData("text/plain");
-      state.draggedOwnedCardId = null;
-      if (ownedCardId) {
-        await moveOwnedCardToSlot(ownedCardId, pageNumber, slot);
-      }
-    });
-    slotButton.addEventListener("dragend", () => {
-      window.clearTimeout(state.binderEdgeTimer);
-      state.draggedOwnedCardId = null;
-    });
     slotButton.addEventListener("click", () => {
       const ownedId = slotButton.dataset.ownedId;
       if (state.touchDraggedOwnedCardId || state.suppressNextBinderClick) {
@@ -1323,39 +1320,43 @@ async function renderBinderDetailPage() {
       if (owned) openCardDetail(owned.cardId);
     });
     slotButton.addEventListener("pointerdown", (event) => {
-      if (event.pointerType === "mouse" || !slotButton.dataset.ownedId) return;
+      if (!slotButton.dataset.ownedId) return;
       window.clearTimeout(state.touchDragTimer);
       state.touchDragStartX = event.clientX;
       state.touchDragStartY = event.clientY;
       state.touchDragPointerId = event.pointerId;
-      state.touchDragTimer = window.setTimeout(() => {
-        state.touchDraggedOwnedCardId = slotButton.dataset.ownedId || null;
-        slotButton.classList.add("is-touch-dragging");
-        createBinderDragGhost(slotButton, event.clientX, event.clientY);
-        try {
-          slotButton.setPointerCapture?.(event.pointerId);
-        } catch {
-          // Pointer may have ended before the long-press delay completes.
-        }
-      }, 650);
+      state.binderDragSourceButton = slotButton;
+      if (event.pointerType === "mouse") {
+        event.preventDefault();
+      } else {
+        state.touchDragTimer = window.setTimeout(() => {
+          startBinderPointerDrag(slotButton, event);
+        }, 650);
+      }
     });
     slotButton.addEventListener("pointermove", (event) => {
       if (!state.touchDraggedOwnedCardId) {
-        const movedBeforeDrag = Math.hypot(event.clientX - state.touchDragStartX, event.clientY - state.touchDragStartY) > 12;
-        if (movedBeforeDrag) {
+        const movedDistance = Math.hypot(event.clientX - state.touchDragStartX, event.clientY - state.touchDragStartY);
+        if (event.pointerType === "mouse" && movedDistance > 4 && state.binderDragSourceButton) {
+          startBinderPointerDrag(state.binderDragSourceButton, event);
+          moveBinderDragGhost(event.clientX, event.clientY);
+          scheduleBinderEdgeTurnFromPoint(event.clientX, pageCount);
+        } else if (event.pointerType !== "mouse" && movedDistance > 12) {
           window.clearTimeout(state.touchDragTimer);
         }
         return;
       }
       if (state.touchDragPointerId !== null && event.pointerId !== state.touchDragPointerId) return;
-      if (!state.touchDraggedOwnedCardId) return;
       event.preventDefault();
       moveBinderDragGhost(event.clientX, event.clientY);
       scheduleBinderEdgeTurnFromPoint(event.clientX, pageCount);
     });
     slotButton.addEventListener("pointerup", async (event) => {
       window.clearTimeout(state.touchDragTimer);
-      if (!state.touchDraggedOwnedCardId) return;
+      if (!state.touchDraggedOwnedCardId) {
+        state.touchDragPointerId = null;
+        return;
+      }
       event.preventDefault();
       window.clearTimeout(state.binderEdgeTimer);
       const target = document.elementFromPoint(event.clientX, event.clientY)?.closest?.(".binder-slot");
@@ -1363,12 +1364,17 @@ async function renderBinderDetailPage() {
       const ownedCardId = state.touchDraggedOwnedCardId;
       state.touchDraggedOwnedCardId = null;
       state.touchDragPointerId = null;
+      state.binderDragSourceButton = null;
       state.suppressNextBinderClick = true;
+      state.justFinishedBinderDrag = true;
       removeBinderDragGhost();
       article.querySelectorAll(".is-touch-dragging").forEach((item) => item.classList.remove("is-touch-dragging"));
       if (targetSlot) {
         await moveOwnedCardToSlot(ownedCardId, pageNumber, targetSlot);
       }
+      window.setTimeout(() => {
+        state.justFinishedBinderDrag = false;
+      }, 120);
     });
     slotButton.addEventListener("pointercancel", () => {
       cancelBinderTouchDrag(article);
