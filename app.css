@@ -362,6 +362,7 @@ body.is-detail-page {
   gap: 8px;
   min-height: 132px;
   padding-right: 46px;
+  cursor: pointer;
 }
 
 .binder-card-head {
@@ -550,6 +551,58 @@ body.is-detail-page {
 .catalog-binder-menu button:disabled {
   cursor: default;
   opacity: 0.45;
+}
+
+.binder-page-board {
+  display: grid;
+  gap: 12px;
+}
+
+.binder-page-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.binder-slot {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 0.72;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+  touch-action: none;
+}
+
+.binder-slot.has-card {
+  cursor: grab;
+  background: #fff;
+}
+
+.binder-slot.has-card:active {
+  cursor: grabbing;
+}
+
+.binder-slot.is-touch-dragging {
+  opacity: 0.72;
+  outline: 2px solid var(--accent);
+}
+
+.binder-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 12px rgba(17, 24, 39, 0.16));
+}
+
+.binder-empty-slot {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: #fff;
 }
 
 .series-stats,
