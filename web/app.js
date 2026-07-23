@@ -77,7 +77,6 @@ const els = {
   pokedexBannerMeta: document.querySelector("#pokedex-banner-meta"),
   pokedexBack: document.querySelector("#pokedex-back"),
   pokedexContent: document.querySelector("#pokedex-content"),
-  pokedexPageMeta: document.querySelector("#pokedex-page-meta"),
   binderCreateToggle: document.querySelector("#binder-create-toggle"),
   binderCreateModal: document.querySelector("#binder-create-modal"),
   binderCreateCancel: document.querySelector("#binder-create-cancel"),
@@ -918,6 +917,24 @@ async function renderPokedexBinder(article) {
   const startNumber = pageEntries[0]?.number || 0;
   const endNumber = pageEntries.at(-1)?.number || 0;
   article.innerHTML = `
+    <div class="pokedex-grid">
+      ${pageEntries
+        .map((entry) => {
+          const owned = entry.owned;
+          return `
+            <button class="pokedex-slot${owned ? " has-card" : ""}" type="button" ${owned ? `data-card-id="${owned.detail.id}"` : "disabled"}>
+              <span class="pokedex-number">${String(entry.number).padStart(3, "0")}</span>
+              ${
+                owned?.detail.image_url
+                  ? `<img src="${owned.detail.image_url}" alt="${escapeHtml(owned.detail.name)}" loading="lazy">`
+                  : `<span class="pokedex-empty-card">${escapeHtml(entry.name)}</span>`
+              }
+              <span class="pokedex-slot-name">${escapeHtml(entry.name)}</span>
+            </button>
+          `;
+        })
+        .join("")}
+    </div>
     <div class="pokedex-pager">
       <button class="icon-button" type="button" data-pokedex-prev aria-label="Page precedente">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
@@ -926,27 +943,6 @@ async function renderPokedexBinder(article) {
       <button class="icon-button" type="button" data-pokedex-next aria-label="Page suivante">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
       </button>
-    </div>
-    <div class="pokedex-list">
-      ${pageEntries
-        .map((entry) => {
-          const owned = entry.owned;
-          return `
-            <button class="pokedex-row${owned ? " has-card" : ""}" type="button" ${owned ? `data-card-id="${owned.detail.id}"` : "disabled"}>
-              <span class="pokedex-number">${String(entry.number).padStart(3, "0")}</span>
-              ${
-                owned?.detail.image_url
-                  ? `<img src="${owned.detail.image_url}" alt="${escapeHtml(owned.detail.name)}" loading="lazy">`
-                  : `<span class="pokedex-missing-thumb"></span>`
-              }
-              <span class="pokedex-row-copy">
-                <strong>${escapeHtml(entry.name)}</strong>
-                <span>${owned ? `${escapeHtml(owned.detail.name)} - ${formatPrice(owned.value)}` : "Aucune carte possédée"}</span>
-              </span>
-            </button>
-          `;
-        })
-        .join("")}
     </div>
   `;
   article.querySelector("[data-pokedex-prev]").disabled = state.pokedexPage <= 0;
@@ -978,9 +974,6 @@ async function renderPokedexPage() {
   article.innerHTML = "<p class='subtitle'>Chargement du Pokédex...</p>";
   els.pokedexContent.replaceChildren(article);
   await renderPokedexBinder(article);
-  const entries = await buildPokedexEntries();
-  const ownedCount = entries.filter((entry) => entry.owned).length;
-  els.pokedexPageMeta.textContent = `${ownedCount} / ${entries.length} Pokémon représenté(s), ordre national.`;
 }
 
 async function renderBinders() {
