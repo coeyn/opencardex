@@ -862,9 +862,12 @@ select:focus {
 
 .card-dialog {
   width: min(1120px, calc(100vw - 20px));
+  max-width: calc(100vw - 20px);
+  max-height: calc(100dvh - 20px);
   padding: 0;
   border: 0;
   background: transparent;
+  overflow: hidden;
 }
 
 .card-dialog::backdrop {
@@ -877,6 +880,11 @@ select:focus {
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 20px;
   padding: 20px;
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - 20px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .dialog-close {
@@ -893,6 +901,7 @@ select:focus {
 
 .dialog-visual,
 .dialog-copy {
+  min-width: 0;
   display: grid;
   gap: 14px;
   align-content: start;
@@ -900,6 +909,7 @@ select:focus {
 
 .dialog-visual img {
   width: 100%;
+  max-width: 100%;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -915,11 +925,13 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .stat-box,
 .chart-panel,
 .history-panel {
+  min-width: 0;
   padding: 14px;
 }
 
@@ -937,12 +949,15 @@ select:focus {
 }
 
 #dialog-chart {
+  display: block;
+  max-width: 100%;
   width: 100%;
   height: 240px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .chart-selection {
+  overflow-wrap: anywhere;
   margin-top: 10px;
   padding: 10px;
   border: 1px solid var(--line);
@@ -954,17 +969,20 @@ select:focus {
   display: grid;
   gap: 8px;
   max-height: 240px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .history-row {
   display: grid;
-  grid-template-columns: 130px repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
   gap: 8px;
   padding: 10px;
   border-radius: var(--radius);
   background: var(--panel-soft);
   font-size: 13px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .quote-draft-panel {
@@ -1176,6 +1194,45 @@ select:focus {
 
   .detail-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .card-dialog {
+    width: calc(100vw - 12px);
+    max-width: calc(100vw - 12px);
+    max-height: calc(100dvh - 12px);
+  }
+
+  .dialog-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    max-height: calc(100dvh - 12px);
+    padding: 12px;
+  }
+
+  .dialog-visual img {
+    width: min(240px, 72vw);
+    margin: 0 auto;
+  }
+
+  .dialog-copy h2 {
+    padding-right: 42px;
+    overflow-wrap: anywhere;
+  }
+
+  .dialog-actions,
+  .chart-head,
+  .history-head,
+  .chart-head-meta {
+    flex-wrap: wrap;
+  }
+
+  .dialog-actions > *,
+  .chart-head-meta > * {
+    min-width: 0;
+  }
+
+  .stat-box strong {
+    overflow-wrap: anywhere;
   }
 
   .history-row,
