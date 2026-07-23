@@ -911,7 +911,7 @@ async function buildPokedexEntries() {
 
 async function renderPokedexBinder(article) {
   const entries = await buildPokedexEntries();
-  const pageSize = 25;
+  const pageSize = 9;
   const pageCount = Math.max(1, Math.ceil(entries.length / pageSize));
   state.pokedexPage = Math.min(Math.max(state.pokedexPage, 0), pageCount - 1);
   const pageEntries = entries.slice(state.pokedexPage * pageSize, state.pokedexPage * pageSize + pageSize);
