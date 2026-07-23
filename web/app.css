@@ -517,6 +517,7 @@ select:focus {
 }
 
 .card-tile {
+  position: relative;
   display: block;
 }
 
@@ -672,6 +673,91 @@ select:focus {
 .card-owned-button {
   background: var(--accent);
   border-color: var(--accent);
+}
+
+.catalog-card-grid .card-copy,
+.catalog-card-grid .card-quote-button,
+.catalog-card-grid .card-owned-button,
+.catalog-card-grid .card-local-id,
+.catalog-card-grid .card-lang-badge,
+.catalog-card-grid .card-set-name,
+.catalog-card-grid .image-price-group,
+.catalog-card-grid .card-slope-badge {
+  display: none;
+}
+
+.catalog-card-grid .card-visual-wrap {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  aspect-ratio: 0.72;
+}
+
+.catalog-card-grid .card-visual {
+  filter: drop-shadow(0 8px 12px rgba(17, 24, 39, 0.18));
+}
+
+.catalog-card-actions {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.catalog-price,
+.catalog-add-button {
+  min-height: 28px;
+  border-radius: var(--radius);
+  background: rgba(17, 24, 39, 0.86);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  backdrop-filter: blur(8px);
+}
+
+.catalog-price {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+}
+
+.catalog-add-button {
+  width: 28px;
+  border: 0;
+}
+
+.catalog-binder-menu {
+  position: absolute;
+  left: 0;
+  bottom: 34px;
+  display: grid;
+  gap: 4px;
+  width: max-content;
+  max-width: min(220px, calc(100vw - 24px));
+  max-height: 220px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.catalog-binder-menu button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .binder-form,
@@ -1044,36 +1130,6 @@ select:focus {
   .catalog-card-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-  }
-
-  .catalog-card-grid .card-visual-wrap {
-    min-height: 0;
-    aspect-ratio: 0.72;
-    padding: 4px;
-  }
-
-  .catalog-card-grid .card-copy {
-    gap: 2px;
-  }
-
-  .catalog-card-grid .card-local-id,
-  .catalog-card-grid .card-lang-badge,
-  .catalog-card-grid .card-set-name,
-  .catalog-card-grid .image-price-group,
-  .catalog-card-grid .card-slope-badge {
-    display: none;
-  }
-
-  .catalog-card-grid .card-name {
-    font-size: 11px;
-    line-height: 1.15;
-    min-height: 26px;
-    overflow: hidden;
-  }
-
-  .catalog-card-grid .card-quote-button,
-  .catalog-card-grid .card-owned-button {
-    display: none;
   }
 
   .cards-grid {

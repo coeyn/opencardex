@@ -902,6 +902,22 @@ function prepareOwnedCardDraft(card) {
   els.ownedCardDraftPanel.hidden = false;
 }
 
+async function addCardToBinder(card, binderId) {
+  await OpenCardexStore.saveOwnedCard({
+    cardId: card.id,
+    binderId: binderId || undefined,
+    quantity: 1,
+    condition: "near_mint",
+    language: "fr",
+    variant: "normal",
+    page: "",
+    slot: "",
+    forTrade: false,
+    wanted: false,
+  });
+  await loadCollectionData();
+}
+
 async function confirmOwnedCardDraft() {
   const card = state.pendingOwnedCardDraft;
   if (!card) return;
@@ -1257,18 +1273,38 @@ function renderCards() {
         : "";
 
     button.addEventListener("click", () => openCardDetail(card.id));
-    addQuoteButton.addEventListener("click", (event) => {
+    addQuoteButton.remove();
+
+    const marketPrice = getLatestMarketPrice(card);
+    const catalogActions = document.createElement("div");
+    catalogActions.className = "catalog-card-actions";
+    catalogActions.innerHTML = `
+      <span class="catalog-price">${marketPrice === null ? "N/A" : formatPrice(marketPrice)}</span>
+      <button class="catalog-add-button" type="button" aria-label="Ajouter au classeur">+</button>
+      <div class="catalog-binder-menu" hidden></div>
+    `;
+    const menu = catalogActions.querySelector(".catalog-binder-menu");
+    menu.innerHTML = [
+      `<button type="button" data-binder-id="">Sans classeur</button>`,
+      ...state.binders.map((binder) =>
+        `<button type="button" data-binder-id="${binder.id}">${escapeHtml(binder.name)}</button>`,
+      ),
+    ].join("");
+    catalogActions.querySelector(".catalog-add-button").addEventListener("click", (event) => {
       event.stopPropagation();
-      prepareQuoteDraft(card);
+      document.querySelectorAll(".catalog-binder-menu").forEach((item) => {
+        if (item !== menu) item.hidden = true;
+      });
+      menu.hidden = !menu.hidden;
     });
-    addQuoteButton.insertAdjacentHTML(
-      "afterend",
-      '<button class="card-owned-button primary-button" type="button">+ Collection</button>',
-    );
-    node.querySelector(".card-owned-button").addEventListener("click", (event) => {
-      event.stopPropagation();
-      prepareOwnedCardDraft(card);
+    menu.querySelectorAll("button").forEach((binderButton) => {
+      binderButton.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        menu.hidden = true;
+        await addCardToBinder(card, binderButton.dataset.binderId || "");
+      });
     });
+    node.appendChild(catalogActions);
     els.cardsGrid.appendChild(node);
   }
 }
