@@ -1179,7 +1179,7 @@ async function renderBinderDetailPage() {
                 ? `<img src="${view.detail.image_url}" alt="${escapeHtml(view.detail.name)}" loading="lazy">`
                 : `<span class="binder-empty-slot"></span>`
             }
-            ${view ? `<span class="binder-slot-price${getOwnedCardCustomPrice(view.ownedCard) !== null ? " is-custom" : ""}">${formatPrice(getOwnedCardEffectivePrice(view))}</span>` : ""}
+            ${view ? `<span class="binder-slot-price${getOwnedCardCustomPrice(view.ownedCard) !== null ? " is-custom" : ""}" data-owned-price="${view.ownedCard.id}">${formatPrice(getOwnedCardEffectivePrice(view))}</span>` : ""}
           </button>
         `;
       }).join("")}
@@ -1222,8 +1222,14 @@ async function renderBinderDetailPage() {
   article.querySelectorAll(".binder-slot").forEach((slotButton) => {
     slotButton.addEventListener("click", () => {
       if (slotButton.dataset.cardId) {
-        openBinderCardPriceModal(slotButton.dataset.ownedId);
+        openCardDetail(slotButton.dataset.cardId);
       }
+    });
+  });
+  article.querySelectorAll("[data-owned-price]").forEach((priceButton) => {
+    priceButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openBinderCardPriceModal(priceButton.dataset.ownedPrice);
     });
   });
 }
