@@ -227,7 +227,6 @@
           </svg>
         </button>
         <div class="detail-title-block">
-          <p id="dialog-local-id" class="eyebrow"></p>
           <h1 id="dialog-title"></h1>
           <div class="detail-set-line">
             <img id="dialog-set-logo" class="detail-set-logo" alt="" hidden />
@@ -250,27 +249,23 @@
 
         <section class="detail-price-panel">
           <div class="detail-trend-card">
-            <span class="stat-label">Tendance</span>
             <strong id="dialog-mean"></strong>
-            <span id="dialog-change" class="detail-change"></span>
           </div>
           <a id="dialog-cardmarket" class="secondary-button button-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Cardmarket</a>
-          <button id="dialog-add-quote" class="secondary-button" type="button">Ajouter au devis</button>
           <div class="detail-hidden-stats" hidden>
+            <span id="dialog-local-id"></span>
             <span id="dialog-avg"></span>
             <span id="dialog-low"></span>
             <span id="dialog-holo"></span>
             <span id="dialog-reverse"></span>
+            <span id="dialog-change"></span>
           </div>
         </section>
 
         <section class="chart-panel detail-chart-panel">
-          <div class="chart-head">
-            <span class="stat-label">Prix / Date</span>
-            <div class="chart-head-meta">
-              <span id="dialog-history-mode" class="toolbar-count"></span>
-              <span id="dialog-history-count" class="toolbar-count"></span>
-            </div>
+          <div class="detail-hidden-stats" hidden>
+            <span id="dialog-history-mode"></span>
+            <span id="dialog-history-count"></span>
           </div>
           <svg id="dialog-chart" viewBox="0 0 640 280" preserveAspectRatio="none"></svg>
           <div id="dialog-chart-selection" class="chart-selection subtitle">Selectionne un point du graphe pour voir le detail.</div>

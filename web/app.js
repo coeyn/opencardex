@@ -102,7 +102,6 @@ const els = {
   dialogSubtitle: document.querySelector("#dialog-subtitle"),
   dialogSetLogo: document.querySelector("#dialog-set-logo"),
   dialogCardmarket: document.querySelector("#dialog-cardmarket"),
-  dialogAddQuote: document.querySelector("#dialog-add-quote"),
   dialogAddOwned: document.querySelector("#dialog-add-owned"),
   dialogAvg: document.querySelector("#dialog-avg"),
   dialogMean: document.querySelector("#dialog-mean"),
@@ -1437,17 +1436,7 @@ function renderSelectedChartPoint() {
     return;
   }
 
-  const parts = [
-    entry.label,
-    `Tendance ${formatPrice(entry.value)}`,
-    `Moyenne ${formatPrice(entry.avg)}`,
-    `Bas ${formatPrice(entry.low)}`,
-    `Reverse ${formatUsdPrice(entry.tcgplayer_reverse_market)}`,
-  ];
-  if (entry.samples) {
-    parts.push(`${entry.samples} scan(s)`);
-  }
-  els.dialogChartSelection.textContent = parts.join(" · ");
+  els.dialogChartSelection.textContent = `${formatPrice(entry.value)} - ${entry.label}`;
 }
 
 function bindChartInteractions() {
@@ -1725,11 +1714,6 @@ els.navAccount.addEventListener("click", () => switchPage("account"));
 els.mobileNavCatalog.addEventListener("click", () => switchPage("catalog"));
 els.mobileNavBinders.addEventListener("click", () => switchPage("binders"));
 els.mobileNavAccount.addEventListener("click", () => switchPage("account"));
-els.dialogAddQuote.addEventListener("click", () => {
-  if (state.currentDetailCard) {
-    prepareQuoteDraft(state.currentDetailCard);
-  }
-});
 els.dialogAddOwned.addEventListener("click", () => {
   if (state.currentDetailCard) {
     prepareOwnedCardDraft(state.currentDetailCard);

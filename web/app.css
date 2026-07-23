@@ -892,7 +892,7 @@ select:focus {
 
 .detail-title-block h1 {
   overflow: hidden;
-  font-size: 17px;
+  font-size: 20px;
   line-height: 1.12;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -960,14 +960,13 @@ select:focus {
 
 .detail-price-panel {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
-.detail-trend-card,
 .chart-panel,
 .history-panel {
   min-width: 0;
@@ -979,14 +978,26 @@ select:focus {
 }
 
 .detail-trend-card {
-  display: grid;
-  gap: 4px;
-  min-width: 160px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.86);
+  color: #fff;
 }
 
 .detail-trend-card strong {
-  font-size: 24px;
+  font-size: 13px;
   line-height: 1;
+}
+
+.detail-price-panel .button-link {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
 }
 
 .detail-change {
