@@ -357,8 +357,11 @@ body.is-detail-page {
 }
 
 .binder-card {
+  position: relative;
   display: grid;
   gap: 8px;
+  min-height: 132px;
+  padding-right: 46px;
 }
 
 .binder-card-head {
@@ -371,6 +374,31 @@ body.is-detail-page {
 .binder-card.is-system-binder {
   grid-column: 1 / -1;
   background: #fff;
+}
+
+.binder-delete-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: rgba(194, 58, 58, 0.1);
+  color: var(--bad);
+}
+
+.binder-delete-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .pokedex-banner {
@@ -688,6 +716,10 @@ select:focus {
 .binder-list,
 .settings-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.binder-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .compact-list {
@@ -1419,6 +1451,10 @@ select:focus {
     gap: 10px;
   }
 
+  .binder-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .section-head,
   .hero-panel,
   .cards-toolbar,
@@ -1510,5 +1546,11 @@ select:focus {
     left: 12px;
     bottom: 82px;
     width: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .binder-list {
+    grid-template-columns: 1fr;
   }
 }
