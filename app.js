@@ -15,6 +15,8 @@ const state = {
   pendingQuoteDraft: null,
   currentDetailCard: null,
   currentPage: "catalog",
+  cloudUser: null,
+  cloudReady: false,
   detailReturnPage: "catalog",
   binders: [],
   ownedCards: [],
@@ -79,6 +81,19 @@ const els = {
   pokedexPage: document.querySelector("#pokedex-page"),
   binderDetailPage: document.querySelector("#binder-detail-page"),
   accountPage: document.querySelector("#account-page"),
+  accountStatus: document.querySelector("#account-status"),
+  accountSignedOut: document.querySelector("#account-signed-out"),
+  accountSignedIn: document.querySelector("#account-signed-in"),
+  accountUser: document.querySelector("#account-user"),
+  accountEmail: document.querySelector("#account-email"),
+  accountPassword: document.querySelector("#account-password"),
+  accountEmailLogin: document.querySelector("#account-email-login"),
+  accountEmailRegister: document.querySelector("#account-email-register"),
+  accountGoogleLogin: document.querySelector("#account-google-login"),
+  accountLogout: document.querySelector("#account-logout"),
+  accountSyncMeta: document.querySelector("#account-sync-meta"),
+  accountCloudUpload: document.querySelector("#account-cloud-upload"),
+  accountCloudDownload: document.querySelector("#account-cloud-download"),
   cardDetailPage: document.querySelector("#card-detail-page"),
   pokedexBanner: document.querySelector("#pokedex-banner"),
   pokedexBannerMeta: document.querySelector("#pokedex-banner-meta"),
@@ -1393,6 +1408,105 @@ async function importCollectionJson(file) {
   await loadCollectionData();
 }
 
+function setAccountMessage(message) {
+  if (els.accountStatus) {
+    els.accountStatus.textContent = message;
+  }
+}
+
+function renderAccount() {
+  const cloud = window.OpenCardexCloud;
+  const user = state.cloudUser || cloud?.getCurrentUser?.() || null;
+  state.cloudUser = user;
+  const isReady = state.cloudReady && Boolean(cloud);
+  const isSignedIn = Boolean(user);
+  if (els.accountSignedOut) els.accountSignedOut.hidden = !isReady || isSignedIn;
+  if (els.accountSignedIn) els.accountSignedIn.hidden = !isReady || !isSignedIn;
+  if (els.accountUser) {
+    els.accountUser.textContent = user
+      ? `${user.displayName || user.email || "Compte connecte"}`
+      : "";
+  }
+  if (els.accountCloudUpload) els.accountCloudUpload.disabled = !isSignedIn;
+  if (els.accountCloudDownload) els.accountCloudDownload.disabled = !isSignedIn;
+  if (els.accountSyncMeta) {
+    els.accountSyncMeta.textContent = isSignedIn
+      ? "Sauvegarde manuelle de tes donnees locales vers Firebase."
+      : "Connecte-toi pour sauvegarder tes classeurs dans le cloud.";
+  }
+  if (!isReady) {
+    setAccountMessage("Connexion Firebase en cours...");
+  } else if (isSignedIn) {
+    setAccountMessage("Compte connecte.");
+  } else {
+    setAccountMessage("Connecte-toi pour synchroniser ta collection.");
+  }
+}
+
+function getAccountCredentials() {
+  return {
+    email: els.accountEmail?.value.trim() || "",
+    password: els.accountPassword?.value || "",
+  };
+}
+
+async function signInAccountWithEmail() {
+  const { email, password } = getAccountCredentials();
+  if (!email || !password) {
+    setAccountMessage("Renseigne ton email et ton mot de passe.");
+    return;
+  }
+  setAccountMessage("Connexion en cours...");
+  await window.OpenCardexCloud.signInWithEmail(email, password);
+  if (els.accountPassword) els.accountPassword.value = "";
+}
+
+async function registerAccountWithEmail() {
+  const { email, password } = getAccountCredentials();
+  if (!email || password.length < 6) {
+    setAccountMessage("Mot de passe: 6 caracteres minimum.");
+    return;
+  }
+  setAccountMessage("Creation du compte...");
+  await window.OpenCardexCloud.registerWithEmail(email, password);
+  if (els.accountPassword) els.accountPassword.value = "";
+}
+
+async function signInAccountWithGoogle() {
+  setAccountMessage("Connexion Google en cours...");
+  await window.OpenCardexCloud.signInWithGoogle();
+}
+
+async function signOutAccount() {
+  setAccountMessage("Deconnexion...");
+  await window.OpenCardexCloud.signOut();
+}
+
+async function uploadCollectionToCloud() {
+  setAccountMessage("Envoi vers Firebase...");
+  const payload = await OpenCardexStore.exportBackup();
+  await window.OpenCardexCloud.uploadBackup(payload);
+  setAccountMessage("Sauvegarde cloud terminee.");
+  if (els.accountSyncMeta) {
+    els.accountSyncMeta.textContent = `Dernier envoi: ${formatDateTime(new Date().toISOString())}.`;
+  }
+}
+
+async function downloadCollectionFromCloud() {
+  if (!confirm("Restaurer la sauvegarde cloud va fusionner les donnees cloud dans ce navigateur. Continuer ?")) {
+    return;
+  }
+  setAccountMessage("Restauration depuis Firebase...");
+  const payload = await window.OpenCardexCloud.downloadBackup();
+  if (!payload) {
+    setAccountMessage("Aucune sauvegarde cloud trouvee.");
+    return;
+  }
+  await OpenCardexStore.importBackup(payload);
+  await loadCollectionData();
+  setAccountMessage("Sauvegarde cloud restauree.");
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -1449,6 +1563,9 @@ function switchPage(page) {
     renderPokedexPage().catch((error) => {
       els.pokedexContent.innerHTML = `<p class='subtitle'>Pokédex indisponible: ${escapeHtml(String(error))}</p>`;
     });
+  }
+  if (accountActive) {
+    renderAccount();
   }
   if (binderDetailActive) {
     renderBinderDetailPage().catch((error) => {
@@ -2168,6 +2285,24 @@ els.navAccount.addEventListener("click", () => switchPage("account"));
 els.mobileNavCatalog.addEventListener("click", () => switchPage("catalog"));
 els.mobileNavBinders.addEventListener("click", () => switchPage("binders"));
 els.mobileNavAccount.addEventListener("click", () => switchPage("account"));
+els.accountEmailLogin?.addEventListener("click", () => {
+  signInAccountWithEmail().catch((error) => setAccountMessage(`Connexion impossible: ${error.message}`));
+});
+els.accountEmailRegister?.addEventListener("click", () => {
+  registerAccountWithEmail().catch((error) => setAccountMessage(`Creation impossible: ${error.message}`));
+});
+els.accountGoogleLogin?.addEventListener("click", () => {
+  signInAccountWithGoogle().catch((error) => setAccountMessage(`Connexion Google impossible: ${error.message}`));
+});
+els.accountLogout?.addEventListener("click", () => {
+  signOutAccount().catch((error) => setAccountMessage(`Deconnexion impossible: ${error.message}`));
+});
+els.accountCloudUpload?.addEventListener("click", () => {
+  uploadCollectionToCloud().catch((error) => setAccountMessage(`Envoi impossible: ${error.message}`));
+});
+els.accountCloudDownload?.addEventListener("click", () => {
+  downloadCollectionFromCloud().catch((error) => setAccountMessage(`Restauration impossible: ${error.message}`));
+});
 els.pokedexBanner?.addEventListener("click", () => switchPage("pokedex"));
 els.pokedexBack?.addEventListener("click", () => switchPage("binders"));
 els.binderDetailBack?.addEventListener("click", () => switchPage("binders"));
@@ -2240,6 +2375,15 @@ document.addEventListener("keydown", (event) => {
     closeBinderCardPriceModal();
   }
 });
+window.addEventListener("opencardex-cloud-ready", () => {
+  state.cloudReady = true;
+  renderAccount();
+});
+window.addEventListener("opencardex-cloud-auth", (event) => {
+  state.cloudReady = true;
+  state.cloudUser = event.detail || null;
+  renderAccount();
+});
 els.binderForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await OpenCardexStore.saveBinder({
@@ -2298,6 +2442,12 @@ els.quoteResetButton?.addEventListener("click", () => {
 els.quoteDraftConfirm.addEventListener("click", () => confirmPendingQuoteDraft());
 els.quoteDraftCancel.addEventListener("click", () => cancelPendingQuoteDraft());
 els.dialogClose.addEventListener("click", () => switchPage(state.detailReturnPage || "catalog"));
+
+if (window.OpenCardexCloud) {
+  state.cloudReady = true;
+  state.cloudUser = window.OpenCardexCloud.getCurrentUser?.() || null;
+  renderAccount();
+}
 
 bootstrap().catch((error) => {
   els.setTitle.textContent = "Erreur de chargement";
