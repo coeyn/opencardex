@@ -1,4 +1,4 @@
-const CACHE_NAME = "opencardex-app-v37";
+const CACHE_NAME = "opencardex-app-v38";
 const APP_SHELL = [
   "./",
   "index.html",
@@ -36,6 +36,11 @@ self.addEventListener("fetch", (event) => {
     url.pathname.includes("/api/") ||
     url.pathname.includes("/data/")
   ) {
+    return;
+  }
+
+  if (url.pathname.endsWith("/sw.js") || url.pathname.endsWith("/pwa.js")) {
+    event.respondWith(fetch(request, { cache: "no-store" }).catch(() => caches.match(request)));
     return;
   }
 
