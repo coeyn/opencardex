@@ -23,10 +23,6 @@
         <button id="nav-binders" class="nav-button" type="button">Classeur</button>
         <button id="nav-account" class="nav-button" type="button">Compte</button>
       </nav>
-      <div class="nav-quote-summary">
-        <span id="nav-quote-count" class="meta-chip">0 carte</span>
-        <span id="nav-quote-total" class="meta-chip">0,00 EUR</span>
-      </div>
     </header>
 
     <section id="catalog-page" class="page catalog-page">
@@ -97,68 +93,6 @@
             <button class="primary-button" type="submit">Creer</button>
           </form>
           <div id="binder-list" class="binder-list"></div>
-        </section>
-
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Ajouter</p>
-              <h2>Recherche locale</h2>
-              <p class="subtitle">Recherche une carte puis ajoute-la a un classeur.</p>
-            </div>
-          </div>
-          <div class="cards-toolbar">
-            <div class="search-box">
-              <input id="owned-card-search" type="search" placeholder="Nom de carte, ex: Pikachu" autocomplete="off" />
-            </div>
-            <button id="owned-card-search-button" class="primary-button" type="button">Rechercher</button>
-          </div>
-          <div id="owned-card-search-results" class="cards-grid"></div>
-        </section>
-
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Collection</p>
-              <h2>Cartes possedees</h2>
-              <p id="collection-summary" class="subtitle"></p>
-            </div>
-            <div class="controls">
-              <select id="collection-filter-binder" aria-label="Filtrer par classeur"></select>
-              <select id="collection-sort" aria-label="Trier la collection">
-                <option value="updated_desc">Recemment modifiees</option>
-                <option value="name_asc">Nom</option>
-                <option value="value_desc">Valeur estimee</option>
-              </select>
-              <button id="collection-export-button" class="primary-button" type="button">Export JSON</button>
-              <button id="collection-import-button" class="secondary-button" type="button">Import JSON</button>
-            </div>
-          </div>
-          <div id="collection-grid" class="cards-grid"></div>
-          <input id="collection-import-input" type="file" accept=".json,application/json" hidden />
-        </section>
-
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Devis</p>
-              <h2>Liste de cartes</h2>
-              <p class="subtitle">Modifie les prix, ajuste les quantites, exporte ou remets a zero.</p>
-            </div>
-            <div class="controls">
-              <button id="quote-import-button" class="secondary-button" type="button">Importer</button>
-              <button id="quote-save-button" class="primary-button" type="button">Enregistrer</button>
-              <button id="quote-export-json-button" class="secondary-button" type="button">Export JSON</button>
-              <button id="quote-export-button" class="secondary-button" type="button">Export CSV</button>
-              <button id="quote-reset-button" class="danger-button" type="button">Remise a zero</button>
-            </div>
-          </div>
-          <div class="hero-badges">
-            <span id="quote-count" class="meta-chip">0 carte</span>
-            <span id="quote-total" class="meta-chip">0,00 EUR</span>
-          </div>
-          <div id="quote-list" class="quote-list"></div>
-          <input id="quote-import-input" type="file" accept=".json,application/json" hidden />
         </section>
       </main>
     </section>
