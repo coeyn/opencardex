@@ -1052,12 +1052,23 @@ select:focus {
   min-width: 0;
 }
 
-.ownership-row strong,
-.ownership-empty strong {
+.ownership-row strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ownership-empty {
+  display: grid;
+  align-items: start;
+  justify-content: stretch;
+}
+
+.ownership-empty strong,
+.ownership-empty span {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .ownership-row span,
