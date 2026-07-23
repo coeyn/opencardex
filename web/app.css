@@ -378,6 +378,13 @@ body.is-detail-page {
   gap: 10px;
 }
 
+.binder-card-value {
+  align-self: end;
+  color: var(--accent-strong);
+  font-size: 17px;
+  font-weight: 900;
+}
+
 .binder-card.is-system-binder {
   grid-column: 1 / -1;
   background: #fff;

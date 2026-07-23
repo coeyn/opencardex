@@ -1063,13 +1063,21 @@ async function renderBinders() {
     return String(left.createdAt || "").localeCompare(String(right.createdAt || ""));
   });
   for (const binder of sortedBinders) {
-    const quantity = state.ownedCards
-      .filter((card) => card.binderId === binder.id)
-      .reduce((sum, card) => sum + card.quantity, 0);
     const isSystemBinder = Boolean(binder.system || binder.id === OpenCardexStore.systemPokedexBinderId);
     if (isSystemBinder) {
       continue;
     }
+    const ownedCards = state.ownedCards.filter((card) => card.binderId === binder.id);
+    const quantity = ownedCards.reduce((sum, card) => sum + card.quantity, 0);
+    const views = await Promise.all(ownedCards.map(getOwnedCardView));
+    const binderValue = views.reduce((sum, view) => {
+      const price = getOwnedCardEffectivePrice(view);
+      return price === null ? sum : sum + price * view.ownedCard.quantity;
+    }, 0);
+    const missingPrices = views.filter((view) => getOwnedCardEffectivePrice(view) === null).length;
+    const valueLabel = quantity
+      ? `${formatPrice(binderValue)}${missingPrices ? " + prix manquants" : ""}`
+      : formatPrice(0);
     const article = document.createElement("article");
     article.className = "binder-card";
     article.innerHTML = `
@@ -1087,6 +1095,7 @@ async function renderBinders() {
       </div>
       <p class="subtitle">${escapeHtml(binder.description || "Aucune description")}</p>
       <p class="subtitle">${quantity} carte(s)</p>
+      <p class="binder-card-value">${valueLabel}</p>
     `;
     article.addEventListener("click", () => openBinderDetail(binder.id));
     article.querySelector("[data-delete-binder]")?.addEventListener("click", (event) => {
