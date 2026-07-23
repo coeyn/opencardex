@@ -869,18 +869,21 @@ select:focus {
 .card-detail-page {
   max-width: 980px;
   margin: 0 auto;
-  overflow-x: hidden;
+  padding-top: 70px;
 }
 
 .detail-topbar {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 35;
+  left: 50%;
+  z-index: 75;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) 38px;
   gap: 8px;
   align-items: center;
-  padding: 8px 0;
+  width: min(980px, 100vw);
+  padding: 8px 10px;
+  transform: translateX(-50%);
   background: rgba(245, 247, 251, 0.96);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
