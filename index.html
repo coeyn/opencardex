@@ -91,11 +91,6 @@
               </svg>
             </button>
           </div>
-          <form id="binder-form" class="binder-form" hidden>
-            <input id="binder-name" type="text" placeholder="Nom du classeur" required />
-            <input id="binder-description" type="text" placeholder="Description facultative" />
-            <button class="primary-button" type="submit">Creer</button>
-          </form>
           <div id="binder-list" class="binder-list"></div>
         </section>
       </main>
@@ -303,6 +298,32 @@
         <button id="owned-draft-confirm" class="primary-button" type="button">Ajouter</button>
         <button id="owned-draft-cancel" class="secondary-button" type="button">Annuler</button>
       </div>
+    </section>
+
+    <section id="binder-create-modal" class="modal-backdrop" hidden>
+      <form id="binder-form" class="modal-panel binder-modal">
+        <div class="modal-head">
+          <h2>Nouveau classeur</h2>
+          <button id="binder-create-cancel" class="icon-button" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18"></path>
+              <path d="m6 6 12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <label class="quote-field">
+          <span class="history-cell-label">Nom</span>
+          <input id="binder-name" type="text" placeholder="Nom du classeur" required />
+        </label>
+        <label class="quote-field">
+          <span class="history-cell-label">Description</span>
+          <input id="binder-description" type="text" placeholder="Description facultative" />
+        </label>
+        <div class="quote-draft-actions">
+          <button class="primary-button" type="submit">Creer</button>
+          <button id="binder-create-cancel-secondary" class="secondary-button" type="button">Annuler</button>
+        </div>
+      </form>
     </section>
 
     <template id="set-chip-template">
