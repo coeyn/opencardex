@@ -938,6 +938,9 @@ async function confirmOwnedCardDraft() {
   state.pendingOwnedCardDraft = null;
   els.ownedCardDraftPanel.hidden = true;
   await loadCollectionData();
+  if (state.currentPage === "detail" && state.currentDetailCard) {
+    renderOwnershipStatus(state.currentDetailCard);
+  }
 }
 
 async function searchOwnedCards() {
@@ -1451,46 +1454,40 @@ function bindChartInteractions() {
   }
 }
 
-function renderHistory(timeline) {
+function renderOwnershipStatus(card) {
   els.dialogHistory.innerHTML = "";
+  const ownedMatches = state.ownedCards.filter((ownedCard) => ownedCard.cardId === card.id);
 
-  if (timeline.length === 0) {
-    els.dialogHistory.innerHTML = "<p class='subtitle'>Aucun historique disponible.</p>";
+  if (!ownedMatches.length) {
+    els.dialogHistory.innerHTML = `
+      <div class="ownership-empty">
+        <strong>Pas encore dans ta collection</strong>
+        <span>Utilise le bouton + en haut pour l'ajouter a un classeur.</span>
+      </div>
+    `;
     return;
   }
 
-  const rows = [...timeline].reverse();
-  for (const entry of rows) {
-    const row = document.createElement("div");
-    row.className = "history-row";
-    row.innerHTML = `
-      <div>
-        <div class="history-cell-label">Periode</div>
-        <div>${entry.label}</div>
-      </div>
-      <div>
-        <div class="history-cell-label">Moyenne</div>
-        <div>${formatPrice(entry.value)}</div>
-      </div>
-      <div>
-        <div class="history-cell-label">Tendance</div>
-        <div>${formatPrice(entry.trend)}</div>
-      </div>
-      <div>
-        <div class="history-cell-label">Bas</div>
-        <div>${formatPrice(entry.low)}</div>
-      </div>
-      <div>
-        <div class="history-cell-label">Type</div>
-        <div>${entry.samples ? `${entry.samples} scan(s)` : "Snapshot"}</div>
-      </div>
-      <div>
-        <div class="history-cell-label">Reverse</div>
-        <div>${formatUsdPrice(entry.tcgplayer_reverse_market)}</div>
-      </div>
-    `;
-    els.dialogHistory.appendChild(row);
+  const byBinder = new Map();
+  for (const ownedCard of ownedMatches) {
+    const key = ownedCard.binderId || "";
+    const current = byBinder.get(key) || { quantity: 0, cards: [] };
+    current.quantity += Number(ownedCard.quantity) || 0;
+    current.cards.push(ownedCard);
+    byBinder.set(key, current);
   }
+
+  els.dialogHistory.innerHTML = [...byBinder.entries()]
+    .map(([binderId, item]) => `
+      <article class="ownership-row">
+        <div>
+          <strong>${escapeHtml(getBinderName(binderId))}</strong>
+          <span>${item.quantity} exemplaire(s)</span>
+        </div>
+        <span class="ownership-chip">Possedee</span>
+      </article>
+    `)
+    .join("");
 }
 
 async function openCardDetail(cardId) {
@@ -1546,7 +1543,7 @@ async function openCardDetail(cardId) {
   els.dialogChart.innerHTML = buildChart(timeline, state.selectedChartIndex);
   bindChartInteractions();
   renderSelectedChartPoint();
-  renderHistory(timeline);
+  renderOwnershipStatus(data);
 
   switchPage("detail");
   window.scrollTo({ top: 0, behavior: "auto" });
