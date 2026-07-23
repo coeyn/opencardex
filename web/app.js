@@ -71,6 +71,9 @@ const els = {
   accountPage: document.querySelector("#account-page"),
   cardDetailPage: document.querySelector("#card-detail-page"),
   binderCreateToggle: document.querySelector("#binder-create-toggle"),
+  binderCreateModal: document.querySelector("#binder-create-modal"),
+  binderCreateCancel: document.querySelector("#binder-create-cancel"),
+  binderCreateCancelSecondary: document.querySelector("#binder-create-cancel-secondary"),
   binderForm: document.querySelector("#binder-form"),
   binderName: document.querySelector("#binder-name"),
   binderDescription: document.querySelector("#binder-description"),
@@ -1035,6 +1038,17 @@ function switchPage(page) {
   }
 }
 
+function openBinderCreateModal() {
+  els.binderName.value = "";
+  els.binderDescription.value = "";
+  els.binderCreateModal.hidden = false;
+  els.binderName.focus();
+}
+
+function closeBinderCreateModal() {
+  els.binderCreateModal.hidden = true;
+}
+
 function trendClass(value) {
   if (value === null || value === undefined || value === 0) return "";
   return value > 0 ? "up" : "down";
@@ -1714,10 +1728,17 @@ els.dialogAddOwned.addEventListener("click", () => {
     prepareOwnedCardDraft(state.currentDetailCard);
   }
 });
-els.binderCreateToggle?.addEventListener("click", () => {
-  els.binderForm.hidden = !els.binderForm.hidden;
-  if (!els.binderForm.hidden) {
-    els.binderName.focus();
+els.binderCreateToggle?.addEventListener("click", () => openBinderCreateModal());
+els.binderCreateCancel?.addEventListener("click", () => closeBinderCreateModal());
+els.binderCreateCancelSecondary?.addEventListener("click", () => closeBinderCreateModal());
+els.binderCreateModal?.addEventListener("click", (event) => {
+  if (event.target === els.binderCreateModal) {
+    closeBinderCreateModal();
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !els.binderCreateModal.hidden) {
+    closeBinderCreateModal();
   }
 });
 els.binderForm.addEventListener("submit", async (event) => {
@@ -1728,7 +1749,7 @@ els.binderForm.addEventListener("submit", async (event) => {
   });
   els.binderName.value = "";
   els.binderDescription.value = "";
-  els.binderForm.hidden = true;
+  closeBinderCreateModal();
   await loadCollectionData();
 });
 els.collectionFilterBinder?.addEventListener("change", () => renderCollection());
