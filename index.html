@@ -354,6 +354,25 @@
       </form>
     </section>
 
+    <section id="binder-delete-modal" class="modal-backdrop" hidden>
+      <div class="modal-panel binder-modal" role="dialog" aria-modal="true" aria-labelledby="binder-delete-title">
+        <div class="modal-head">
+          <h2 id="binder-delete-title">Supprimer le classeur</h2>
+          <button id="binder-delete-cancel" class="icon-button" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18"></path>
+              <path d="m6 6 12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <p id="binder-delete-copy" class="subtitle"></p>
+        <div class="quote-draft-actions">
+          <button id="binder-delete-confirm" class="danger-button" type="button">Supprimer</button>
+          <button id="binder-delete-cancel-secondary" class="secondary-button" type="button">Annuler</button>
+        </div>
+      </div>
+    </section>
+
     <template id="set-chip-template">
       <button class="set-chip" type="button">
         <img class="set-chip-logo" alt="" />

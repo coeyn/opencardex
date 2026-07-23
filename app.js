@@ -21,6 +21,7 @@ const state = {
   pokedexPage: 0,
   nationalPokedex: null,
   pendingOwnedCardDraft: null,
+  pendingBinderDeleteId: null,
   ownedCardSearchResults: [],
   cardDetailsCache: new Map(),
   staticSearchIndex: null,
@@ -81,6 +82,11 @@ const els = {
   binderCreateModal: document.querySelector("#binder-create-modal"),
   binderCreateCancel: document.querySelector("#binder-create-cancel"),
   binderCreateCancelSecondary: document.querySelector("#binder-create-cancel-secondary"),
+  binderDeleteModal: document.querySelector("#binder-delete-modal"),
+  binderDeleteCopy: document.querySelector("#binder-delete-copy"),
+  binderDeleteConfirm: document.querySelector("#binder-delete-confirm"),
+  binderDeleteCancel: document.querySelector("#binder-delete-cancel"),
+  binderDeleteCancelSecondary: document.querySelector("#binder-delete-cancel-secondary"),
   binderForm: document.querySelector("#binder-form"),
   binderName: document.querySelector("#binder-name"),
   binderDescription: document.querySelector("#binder-description"),
@@ -994,23 +1000,22 @@ async function renderBinders() {
     const article = document.createElement("article");
     article.className = "binder-card";
     article.innerHTML = `
+      <button class="binder-delete-button" type="button" data-delete-binder="${binder.id}" aria-label="Supprimer ${escapeHtml(binder.name)}">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M8 6V4h8v2"></path>
+          <path d="M19 6l-1 14H6L5 6"></path>
+          <path d="M10 11v5"></path>
+          <path d="M14 11v5"></path>
+        </svg>
+      </button>
       <div class="binder-card-head">
         <h3>${escapeHtml(binder.name)}</h3>
       </div>
       <p class="subtitle">${escapeHtml(binder.description || "Aucune description")}</p>
       <p class="subtitle">${quantity} carte(s)</p>
-      <div class="quote-draft-actions">
-        <button class="quote-remove" type="button" data-delete-binder="${binder.id}">Supprimer</button>
-      </div>
     `;
-    article.querySelector("[data-delete-binder]")?.addEventListener("click", async () => {
-      if (!confirm("Supprimer ce classeur ? Les cartes resteront dans ta collection, sans classeur.")) return;
-      await OpenCardexStore.deleteBinder(binder.id);
-      for (const card of state.ownedCards.filter((item) => item.binderId === binder.id)) {
-        await OpenCardexStore.saveOwnedCard({ ...card, binderId: undefined });
-      }
-      await loadCollectionData();
-    });
+    article.querySelector("[data-delete-binder]")?.addEventListener("click", () => openBinderDeleteModal(binder.id));
     els.binderList.appendChild(article);
   }
 }
@@ -1201,6 +1206,31 @@ function openBinderCreateModal() {
 
 function closeBinderCreateModal() {
   els.binderCreateModal.hidden = true;
+}
+
+function openBinderDeleteModal(binderId) {
+  const binder = state.binders.find((item) => item.id === binderId);
+  if (!binder) return;
+  state.pendingBinderDeleteId = binderId;
+  els.binderDeleteCopy.textContent = `Supprimer "${binder.name}" ? Les cartes resteront dans ta collection, sans classeur.`;
+  els.binderDeleteModal.hidden = false;
+  els.binderDeleteConfirm.focus();
+}
+
+function closeBinderDeleteModal() {
+  state.pendingBinderDeleteId = null;
+  els.binderDeleteModal.hidden = true;
+}
+
+async function confirmBinderDelete() {
+  const binderId = state.pendingBinderDeleteId;
+  if (!binderId) return;
+  await OpenCardexStore.deleteBinder(binderId);
+  for (const card of state.ownedCards.filter((item) => item.binderId === binderId)) {
+    await OpenCardexStore.saveOwnedCard({ ...card, binderId: undefined });
+  }
+  closeBinderDeleteModal();
+  await loadCollectionData();
 }
 
 function trendClass(value) {
@@ -1893,9 +1923,24 @@ els.binderCreateModal?.addEventListener("click", (event) => {
     closeBinderCreateModal();
   }
 });
+els.binderDeleteCancel?.addEventListener("click", () => closeBinderDeleteModal());
+els.binderDeleteCancelSecondary?.addEventListener("click", () => closeBinderDeleteModal());
+els.binderDeleteConfirm?.addEventListener("click", () => {
+  confirmBinderDelete().catch((error) => {
+    els.binderDeleteCopy.textContent = `Suppression impossible: ${String(error)}`;
+  });
+});
+els.binderDeleteModal?.addEventListener("click", (event) => {
+  if (event.target === els.binderDeleteModal) {
+    closeBinderDeleteModal();
+  }
+});
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !els.binderCreateModal.hidden) {
     closeBinderCreateModal();
+  }
+  if (event.key === "Escape" && !els.binderDeleteModal.hidden) {
+    closeBinderDeleteModal();
   }
 });
 els.binderForm.addEventListener("submit", async (event) => {
