@@ -373,6 +373,51 @@ body.is-detail-page {
   background: #fff;
 }
 
+.pokedex-banner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text);
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+
+.pokedex-banner h3 {
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.pokedex-banner svg {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pokedex-page-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pokedex-dedicated {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
 .pokedex-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
