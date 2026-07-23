@@ -296,7 +296,13 @@ body.is-detail-page {
 }
 
 .binders-head {
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: start;
+}
+
+.binders-head #binder-create-toggle {
+  justify-self: end;
 }
 
 .home-panel {
