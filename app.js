@@ -26,6 +26,7 @@ const state = {
   nationalPokedex: null,
   pendingOwnedCardDraft: null,
   pendingBinderDeleteId: null,
+  pendingBinderPriceOwnedId: null,
   ownedCardSearchResults: [],
   cardDetailsCache: new Map(),
   staticSearchIndex: null,
@@ -93,6 +94,14 @@ const els = {
   binderSortApply: document.querySelector("#binder-sort-apply"),
   binderSortCancel: document.querySelector("#binder-sort-cancel"),
   binderSortCancelSecondary: document.querySelector("#binder-sort-cancel-secondary"),
+  binderCardPriceModal: document.querySelector("#binder-card-price-modal"),
+  binderCardPriceSubtitle: document.querySelector("#binder-card-price-subtitle"),
+  binderCardCustomPrice: document.querySelector("#binder-card-custom-price"),
+  binderCardMarketPrice: document.querySelector("#binder-card-market-price"),
+  binderCardPriceSave: document.querySelector("#binder-card-price-save"),
+  binderCardPriceReset: document.querySelector("#binder-card-price-reset"),
+  binderCardOpenDetail: document.querySelector("#binder-card-open-detail"),
+  binderCardPriceCancel: document.querySelector("#binder-card-price-cancel"),
   binderCreateToggle: document.querySelector("#binder-create-toggle"),
   binderCreateModal: document.querySelector("#binder-create-modal"),
   binderCreateCancel: document.querySelector("#binder-create-cancel"),
@@ -150,6 +159,7 @@ const els = {
   ownedDraftCondition: document.querySelector("#owned-draft-condition"),
   ownedDraftLanguage: document.querySelector("#owned-draft-language"),
   ownedDraftVariant: document.querySelector("#owned-draft-variant"),
+  ownedDraftCustomPrice: document.querySelector("#owned-draft-custom-price"),
   ownedDraftPage: document.querySelector("#owned-draft-page"),
   ownedDraftSlot: document.querySelector("#owned-draft-slot"),
   ownedDraftForTrade: document.querySelector("#owned-draft-for-trade"),
@@ -432,6 +442,31 @@ function getLatestMarketPrice(card) {
     }
   }
   return null;
+}
+
+function parseOptionalPrice(value) {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+  const parsed = Number(String(value).replace(",", "."));
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : undefined;
+}
+
+function getOwnedCardCustomPrice(ownedCard) {
+  const value = ownedCard?.customPrice;
+  if (value === "" || value === null || value === undefined) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
+}
+
+function getOwnedCardEffectivePrice(view) {
+  const customPrice = getOwnedCardCustomPrice(view?.ownedCard);
+  if (customPrice !== null) {
+    return customPrice;
+  }
+  return view?.price?.marketPrice ?? getLatestMarketPrice(view?.detail) ?? null;
 }
 
 const priceProvider = {
@@ -768,7 +803,7 @@ async function getOwnedCardView(ownedCard) {
       ownedCard,
       detail,
       price,
-      totalValue: price ? price.marketPrice * ownedCard.quantity : null,
+      totalValue: null,
     };
   } catch {
     return {
@@ -786,7 +821,11 @@ async function getOwnedCardView(ownedCard) {
 }
 
 async function buildOwnedCardViews() {
-  return Promise.all(state.ownedCards.map(getOwnedCardView));
+  const views = await Promise.all(state.ownedCards.map(getOwnedCardView));
+  return views.map((view) => ({
+    ...view,
+    totalValue: getOwnedCardEffectivePrice(view) === null ? null : getOwnedCardEffectivePrice(view) * view.ownedCard.quantity,
+  }));
 }
 
 function renderCollectionFilters() {
@@ -830,6 +869,10 @@ async function renderCollection() {
   }
   for (const view of filtered) {
     const { ownedCard, detail, totalValue, price } = view;
+    const customPrice = getOwnedCardCustomPrice(ownedCard);
+    const priceLabel = totalValue === null
+      ? "Prix indisponible"
+      : `${formatPrice(totalValue)} - ${customPrice !== null ? "prix perso" : escapeHtml(price?.source || "prix tendance")}${customPrice === null && price?.updatedAt ? ` - ${formatDateTime(price.updatedAt)}` : ""}`;
     const article = document.createElement("article");
     article.className = "owned-card";
     article.innerHTML = `
@@ -842,7 +885,7 @@ async function renderCollection() {
         <h3 class="card-name">${escapeHtml(detail.name)}</h3>
         <p class="card-set-name">${escapeHtml(detail.set_name || "")}</p>
         <p class="subtitle">${escapeHtml(getBinderName(ownedCard.binderId))} - ${ownedCard.quantity} ex. - ${escapeHtml(ownedCard.condition)} - ${escapeHtml(ownedCard.variant)}</p>
-        <p class="subtitle">${price ? `${formatPrice(totalValue)} - ${escapeHtml(price.source)} - ${formatDateTime(price.updatedAt)}` : "Prix indisponible"}</p>
+        <p class="subtitle">${priceLabel}</p>
       </div>
       <div class="quote-draft-actions">
         <button class="nav-button" type="button" data-move-owned="${ownedCard.id}">Deplacer</button>
@@ -917,7 +960,7 @@ async function buildPokedexEntries() {
     if (!pokemonKey) continue;
     const dexEntry = nationalPokedex.find((entry) => dexKeyByNumber.get(entry.number) === pokemonKey);
     if (!dexEntry) continue;
-    const value = view.price?.marketPrice ?? getLatestMarketPrice(view.detail) ?? 0;
+    const value = getOwnedCardEffectivePrice(view) ?? 0;
     const current = bestByNumber.get(dexEntry.number);
     if (!current || value > current.value) {
       bestByNumber.set(dexEntry.number, { ...view, value });
@@ -1078,8 +1121,8 @@ function compareBinderCardViews(left, right) {
     return direction * left.detail.name.localeCompare(right.detail.name, "fr", { sensitivity: "base" });
   }
   if (state.binderSortField === "price") {
-    const leftPrice = left.price?.marketPrice ?? getLatestMarketPrice(left.detail) ?? -1;
-    const rightPrice = right.price?.marketPrice ?? getLatestMarketPrice(right.detail) ?? -1;
+    const leftPrice = getOwnedCardEffectivePrice(left) ?? -1;
+    const rightPrice = getOwnedCardEffectivePrice(right) ?? -1;
     return direction * (leftPrice - rightPrice);
   }
   return direction * String(left.ownedCard.createdAt || "").localeCompare(String(right.ownedCard.createdAt || ""));
@@ -1130,13 +1173,13 @@ async function renderBinderDetailPage() {
         const slot = index + 1;
         const view = pageViews[index];
         return `
-          <button class="binder-slot${view ? " has-card" : ""}" type="button" data-slot="${slot}" ${view ? `data-card-id="${view.detail.id}"` : ""}>
+          <button class="binder-slot${view ? " has-card" : ""}" type="button" data-slot="${slot}" ${view ? `data-card-id="${view.detail.id}" data-owned-id="${view.ownedCard.id}"` : ""}>
             ${
               view?.detail.image_url
                 ? `<img src="${view.detail.image_url}" alt="${escapeHtml(view.detail.name)}" loading="lazy">`
                 : `<span class="binder-empty-slot"></span>`
             }
-            ${view ? `<span class="binder-slot-price">${formatPrice(view.price?.marketPrice ?? getLatestMarketPrice(view.detail))}</span>` : ""}
+            ${view ? `<span class="binder-slot-price${getOwnedCardCustomPrice(view.ownedCard) !== null ? " is-custom" : ""}">${formatPrice(getOwnedCardEffectivePrice(view))}</span>` : ""}
           </button>
         `;
       }).join("")}
@@ -1179,10 +1222,53 @@ async function renderBinderDetailPage() {
   article.querySelectorAll(".binder-slot").forEach((slotButton) => {
     slotButton.addEventListener("click", () => {
       if (slotButton.dataset.cardId) {
-        openCardDetail(slotButton.dataset.cardId);
+        openBinderCardPriceModal(slotButton.dataset.ownedId);
       }
     });
   });
+}
+
+async function openBinderCardPriceModal(ownedCardId) {
+  const ownedCard = state.ownedCards.find((card) => card.id === ownedCardId);
+  if (!ownedCard || !els.binderCardPriceModal) return;
+  state.pendingBinderPriceOwnedId = ownedCard.id;
+  const view = await getOwnedCardView(ownedCard);
+  const customPrice = getOwnedCardCustomPrice(ownedCard);
+  const marketPrice = view.price?.marketPrice ?? getLatestMarketPrice(view.detail);
+  els.binderCardPriceSubtitle.textContent = `${view.detail.name} - ${getBinderName(ownedCard.binderId)}`;
+  els.binderCardCustomPrice.value = customPrice === null ? "" : String(customPrice);
+  els.binderCardMarketPrice.textContent = `Prix tendance actuel: ${formatPrice(marketPrice)}`;
+  els.binderCardPriceModal.hidden = false;
+  els.binderCardCustomPrice.focus();
+}
+
+function closeBinderCardPriceModal() {
+  state.pendingBinderPriceOwnedId = null;
+  if (els.binderCardPriceModal) {
+    els.binderCardPriceModal.hidden = true;
+  }
+}
+
+async function saveBinderCardCustomPrice({ reset = false } = {}) {
+  const ownedCard = state.ownedCards.find((card) => card.id === state.pendingBinderPriceOwnedId);
+  if (!ownedCard) return;
+  const customPrice = reset ? undefined : parseOptionalPrice(els.binderCardCustomPrice.value);
+  await OpenCardexStore.saveOwnedCard({
+    ...ownedCard,
+    customPrice,
+  });
+  closeBinderCardPriceModal();
+  await loadCollectionData();
+  if (state.currentPage === "binder-detail") {
+    await renderBinderDetailPage();
+  }
+}
+
+function openBinderCardDetail() {
+  const ownedCard = state.ownedCards.find((card) => card.id === state.pendingBinderPriceOwnedId);
+  if (!ownedCard) return;
+  closeBinderCardPriceModal();
+  openCardDetail(ownedCard.cardId);
 }
 
 function prepareOwnedCardDraft(card) {
@@ -1193,6 +1279,7 @@ function prepareOwnedCardDraft(card) {
   els.ownedDraftCondition.value = "near_mint";
   els.ownedDraftLanguage.value = "fr";
   els.ownedDraftVariant.value = "normal";
+  els.ownedDraftCustomPrice.value = "";
   els.ownedDraftPage.value = "";
   els.ownedDraftSlot.value = "";
   els.ownedDraftForTrade.checked = false;
@@ -1213,6 +1300,7 @@ async function addCardToBinder(card, binderId) {
     condition: "near_mint",
     language: "fr",
     variant: "normal",
+    customPrice: undefined,
     page: "",
     slot: "",
     forTrade: false,
@@ -1235,6 +1323,7 @@ async function confirmOwnedCardDraft() {
     condition: els.ownedDraftCondition.value,
     language: els.ownedDraftLanguage.value,
     variant: els.ownedDraftVariant.value,
+    customPrice: parseOptionalPrice(els.ownedDraftCustomPrice.value),
     page: els.ownedDraftPage.value,
     slot: els.ownedDraftSlot.value,
     forTrade: els.ownedDraftForTrade.checked,
@@ -2114,6 +2203,23 @@ els.binderSortModal?.addEventListener("click", (event) => {
     closeBinderSortModal();
   }
 });
+els.binderCardPriceCancel?.addEventListener("click", () => closeBinderCardPriceModal());
+els.binderCardPriceSave?.addEventListener("click", () => {
+  saveBinderCardCustomPrice().catch((error) => {
+    els.binderCardMarketPrice.textContent = `Enregistrement impossible: ${String(error)}`;
+  });
+});
+els.binderCardPriceReset?.addEventListener("click", () => {
+  saveBinderCardCustomPrice({ reset: true }).catch((error) => {
+    els.binderCardMarketPrice.textContent = `Enregistrement impossible: ${String(error)}`;
+  });
+});
+els.binderCardOpenDetail?.addEventListener("click", () => openBinderCardDetail());
+els.binderCardPriceModal?.addEventListener("click", (event) => {
+  if (event.target === els.binderCardPriceModal) {
+    closeBinderCardPriceModal();
+  }
+});
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !els.binderCreateModal.hidden) {
     closeBinderCreateModal();
@@ -2123,6 +2229,9 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "Escape" && !els.binderSortModal.hidden) {
     closeBinderSortModal();
+  }
+  if (event.key === "Escape" && els.binderCardPriceModal && !els.binderCardPriceModal.hidden) {
+    closeBinderCardPriceModal();
   }
 });
 els.binderForm.addEventListener("submit", async (event) => {

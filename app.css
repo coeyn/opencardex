@@ -664,6 +664,11 @@ body.is-detail-page {
   box-shadow: 0 4px 10px rgba(17, 24, 39, 0.12);
 }
 
+.binder-slot-price.is-custom {
+  background: rgba(28, 122, 87, 0.92);
+  color: #fff;
+}
+
 @keyframes binderPageInNext {
   from {
     opacity: 0.45;

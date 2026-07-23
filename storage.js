@@ -91,6 +91,10 @@
       page: input.page === "" || input.page === undefined ? undefined : Number(input.page),
       slot: input.slot === "" || input.slot === undefined ? undefined : Number(input.slot),
       purchasePrice: input.purchasePrice === "" || input.purchasePrice === undefined ? undefined : Number(input.purchasePrice),
+      customPrice:
+        input.customPrice === "" || input.customPrice === null || input.customPrice === undefined
+          ? undefined
+          : Number(input.customPrice),
       purchaseDate: input.purchaseDate || undefined,
       forTrade: Boolean(input.forTrade),
       wanted: Boolean(input.wanted),
