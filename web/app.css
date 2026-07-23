@@ -295,6 +295,10 @@ body.is-detail-page {
   margin-bottom: 16px;
 }
 
+.binders-head {
+  align-items: center;
+}
+
 .home-panel {
   padding-top: 16px;
   padding-bottom: 16px;
@@ -350,6 +354,22 @@ body.is-detail-page {
 .quote-card-copy h3 {
   font-size: 18px;
   line-height: 1.15;
+}
+
+.binder-card {
+  display: grid;
+  gap: 8px;
+}
+
+.binder-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.binder-card.is-system-binder {
+  background: #fff;
 }
 
 .series-stats,
