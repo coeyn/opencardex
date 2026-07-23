@@ -19,6 +19,7 @@ const state = {
   binders: [],
   ownedCards: [],
   pokedexPage: 0,
+  nationalPokedex: null,
   pendingOwnedCardDraft: null,
   ownedCardSearchResults: [],
   cardDetailsCache: new Map(),
@@ -846,70 +847,106 @@ async function renderCollection() {
   }
 }
 
-function normalizePokemonName(cardName) {
-  return String(cardName || "")
-    .replace(/\b(ex|vmax|vstar|v-union|v|gx|tag team|prisme|radieux|radiant|shiny)\b/gi, "")
+async function loadNationalPokedex() {
+  if (state.nationalPokedex) {
+    return state.nationalPokedex;
+  }
+  const payload = await fetchStaticJson("data/national-pokedex.json");
+  state.nationalPokedex = Array.isArray(payload.pokedex) ? payload.pokedex : [];
+  return state.nationalPokedex;
+}
+
+function normalizePokemonKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[’']/g, " ")
+    .replace(/[-]/g, " ")
+    .replace(/[^a-z0-9♀♂. -]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-async function buildPokedexEntries() {
-  const views = await buildOwnedCardViews();
-  const bestByPokemon = new Map();
-  for (const view of views) {
-    const pokemonName = normalizePokemonName(view.detail.name);
-    if (!pokemonName) continue;
-    const value = view.price?.marketPrice ?? getLatestMarketPrice(view.detail) ?? 0;
-    const current = bestByPokemon.get(pokemonName);
-    if (!current || value > current.value) {
-      bestByPokemon.set(pokemonName, { ...view, pokemonName, value });
+function cardNameToPokemonKey(cardName, dexKeySet) {
+  let candidate = normalizePokemonKey(cardName)
+    .replace(/\bmega\b/g, " ")
+    .replace(/\b(ex|vmax|vstar|v union|v|gx|tag team|prisme|radieux|radiant|shiny|y|x)\b/g, " ")
+    .replace(/\s+(d|de|du|des|la|le|les|l)\s+.*$/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (dexKeySet.has(candidate)) {
+    return candidate;
+  }
+  for (const dexKey of dexKeySet) {
+    if (candidate === dexKey || candidate.startsWith(`${dexKey} `) || candidate.endsWith(` ${dexKey}`)) {
+      return dexKey;
     }
   }
-  return [...bestByPokemon.values()].sort((left, right) =>
-    left.pokemonName.localeCompare(right.pokemonName, "fr", { sensitivity: "base" }),
-  );
+  return null;
+}
+
+async function buildPokedexEntries() {
+  const nationalPokedex = await loadNationalPokedex();
+  const dexKeyByNumber = new Map(nationalPokedex.map((entry) => [entry.number, normalizePokemonKey(entry.name)]));
+  const dexKeySet = new Set(dexKeyByNumber.values());
+  const views = await buildOwnedCardViews();
+  const bestByNumber = new Map();
+  for (const view of views) {
+    const pokemonKey = cardNameToPokemonKey(view.detail.name, dexKeySet);
+    if (!pokemonKey) continue;
+    const dexEntry = nationalPokedex.find((entry) => dexKeyByNumber.get(entry.number) === pokemonKey);
+    if (!dexEntry) continue;
+    const value = view.price?.marketPrice ?? getLatestMarketPrice(view.detail) ?? 0;
+    const current = bestByNumber.get(dexEntry.number);
+    if (!current || value > current.value) {
+      bestByNumber.set(dexEntry.number, { ...view, value });
+    }
+  }
+  return nationalPokedex.map((entry) => ({
+    ...entry,
+    owned: bestByNumber.get(entry.number) || null,
+  }));
 }
 
 async function renderPokedexBinder(article) {
   const entries = await buildPokedexEntries();
-  const pageSize = 9;
+  const pageSize = 25;
   const pageCount = Math.max(1, Math.ceil(entries.length / pageSize));
   state.pokedexPage = Math.min(Math.max(state.pokedexPage, 0), pageCount - 1);
   const pageEntries = entries.slice(state.pokedexPage * pageSize, state.pokedexPage * pageSize + pageSize);
+  const startNumber = pageEntries[0]?.number || 0;
+  const endNumber = pageEntries.at(-1)?.number || 0;
   article.innerHTML = `
-    <div class="binder-card-head">
-      <div>
-        <h3>Pokédex</h3>
-        <p class="subtitle">Meilleure carte possédée pour chaque Pokémon.</p>
-      </div>
-      <span class="meta-chip">Auto</span>
-    </div>
-    <div class="pokedex-grid">
-      ${
-        pageEntries.length
-          ? pageEntries
-              .map((entry) => `
-                <button class="pokedex-slot" type="button" data-card-id="${entry.detail.id}">
-                  ${
-                    entry.detail.image_url
-                      ? `<img src="${entry.detail.image_url}" alt="${escapeHtml(entry.detail.name)}" loading="lazy">`
-                      : `<span class="card-placeholder">Image indisponible</span>`
-                  }
-                  <span class="pokedex-price">${formatPrice(entry.value)}</span>
-                </button>
-              `)
-              .join("")
-          : `<p class="subtitle pokedex-empty">Ajoute des cartes dans tes classeurs pour remplir le Pokédex.</p>`
-      }
-    </div>
     <div class="pokedex-pager">
       <button class="icon-button" type="button" data-pokedex-prev aria-label="Page precedente">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
       </button>
-      <span>${entries.length ? state.pokedexPage + 1 : 0} / ${pageCount}</span>
+      <span>${String(startNumber).padStart(3, "0")} - ${String(endNumber).padStart(3, "0")}</span>
       <button class="icon-button" type="button" data-pokedex-next aria-label="Page suivante">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
       </button>
+    </div>
+    <div class="pokedex-list">
+      ${pageEntries
+        .map((entry) => {
+          const owned = entry.owned;
+          return `
+            <button class="pokedex-row${owned ? " has-card" : ""}" type="button" ${owned ? `data-card-id="${owned.detail.id}"` : "disabled"}>
+              <span class="pokedex-number">${String(entry.number).padStart(3, "0")}</span>
+              ${
+                owned?.detail.image_url
+                  ? `<img src="${owned.detail.image_url}" alt="${escapeHtml(owned.detail.name)}" loading="lazy">`
+                  : `<span class="pokedex-missing-thumb"></span>`
+              }
+              <span class="pokedex-row-copy">
+                <strong>${escapeHtml(entry.name)}</strong>
+                <span>${owned ? `${escapeHtml(owned.detail.name)} - ${formatPrice(owned.value)}` : "Aucune carte possédée"}</span>
+              </span>
+            </button>
+          `;
+        })
+        .join("")}
     </div>
   `;
   article.querySelector("[data-pokedex-prev]").disabled = state.pokedexPage <= 0;
@@ -930,9 +967,8 @@ async function renderPokedexBinder(article) {
 async function renderPokedexBanner() {
   if (!els.pokedexBannerMeta) return;
   const entries = await buildPokedexEntries();
-  els.pokedexBannerMeta.textContent = entries.length
-    ? `${entries.length} Pokémon représenté(s) par ta meilleure carte possédée.`
-    : "Meilleure carte possédée pour chaque Pokémon.";
+  const ownedCount = entries.filter((entry) => entry.owned).length;
+  els.pokedexBannerMeta.textContent = `${ownedCount} / ${entries.length} Pokémon représenté(s).`;
 }
 
 async function renderPokedexPage() {
@@ -943,9 +979,8 @@ async function renderPokedexPage() {
   els.pokedexContent.replaceChildren(article);
   await renderPokedexBinder(article);
   const entries = await buildPokedexEntries();
-  els.pokedexPageMeta.textContent = entries.length
-    ? `${entries.length} Pokémon représenté(s), 9 cartes par page.`
-    : "Ajoute des cartes dans tes classeurs pour remplir le Pokédex.";
+  const ownedCount = entries.filter((entry) => entry.owned).length;
+  els.pokedexPageMeta.textContent = `${ownedCount} / ${entries.length} Pokémon représenté(s), ordre national.`;
 }
 
 async function renderBinders() {
