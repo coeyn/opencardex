@@ -219,53 +219,71 @@
       </button>
     </nav>
 
-    <dialog id="card-dialog" class="card-dialog">
-      <div class="dialog-layout">
-        <button id="dialog-close" class="dialog-close" type="button" aria-label="Fermer">X</button>
-        <div class="dialog-visual">
+    <section id="card-detail-page" class="page card-detail-page" hidden>
+      <header class="detail-topbar">
+        <button id="dialog-close" class="icon-button" type="button" aria-label="Retour">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m15 18-6-6 6-6"></path>
+          </svg>
+        </button>
+        <div class="detail-title-block">
+          <p id="dialog-local-id" class="eyebrow"></p>
+          <h1 id="dialog-title"></h1>
+          <div class="detail-set-line">
+            <img id="dialog-set-logo" class="detail-set-logo" alt="" hidden />
+            <p id="dialog-subtitle" class="subtitle"></p>
+          </div>
+        </div>
+        <button id="dialog-add-owned" class="icon-button" type="button" aria-label="Ajouter au classeur">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14"></path>
+            <path d="M5 12h14"></path>
+          </svg>
+        </button>
+      </header>
+
+      <main class="detail-page-layout">
+        <section class="detail-photo-panel">
           <img id="dialog-image" alt="" />
           <p id="dialog-image-note" class="image-note"></p>
-        </div>
-        <div class="dialog-copy">
-          <p id="dialog-local-id" class="eyebrow"></p>
-          <h2 id="dialog-title"></h2>
-          <p id="dialog-subtitle" class="subtitle"></p>
-          <div class="dialog-actions">
-            <a id="dialog-cardmarket" class="primary-button button-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Voir sur Cardmarket</a>
-            <button id="dialog-add-quote" class="primary-button" type="button">Ajouter au devis</button>
-            <button id="dialog-add-owned" class="secondary-button" type="button">Ajouter a la collection</button>
-          </div>
+        </section>
 
-          <div class="detail-stats">
-            <div class="stat-box"><span class="stat-label">Prix moyen</span><strong id="dialog-avg"></strong></div>
-            <div class="stat-box"><span class="stat-label">Prix bas</span><strong id="dialog-low"></strong></div>
-            <div class="stat-box"><span class="stat-label">Tendance</span><strong id="dialog-mean"></strong></div>
-            <div class="stat-box"><span class="stat-label">Variation</span><strong id="dialog-change"></strong></div>
-            <div class="stat-box"><span class="stat-label">Holo</span><strong id="dialog-holo"></strong></div>
-            <div class="stat-box"><span class="stat-label">Reverse</span><strong id="dialog-reverse"></strong></div>
+        <section class="detail-price-panel">
+          <div class="detail-trend-card">
+            <span class="stat-label">Tendance</span>
+            <strong id="dialog-mean"></strong>
+            <span id="dialog-change" class="detail-change"></span>
           </div>
+          <a id="dialog-cardmarket" class="secondary-button button-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Cardmarket</a>
+          <button id="dialog-add-quote" class="secondary-button" type="button">Ajouter au devis</button>
+          <div class="detail-hidden-stats" hidden>
+            <span id="dialog-avg"></span>
+            <span id="dialog-low"></span>
+            <span id="dialog-holo"></span>
+            <span id="dialog-reverse"></span>
+          </div>
+        </section>
 
-          <div class="chart-panel">
-            <div class="chart-head">
-              <span class="stat-label">Historique de tendance</span>
-              <div class="chart-head-meta">
-                <span id="dialog-history-mode" class="toolbar-count"></span>
-                <span id="dialog-history-count" class="toolbar-count"></span>
-              </div>
+        <section class="chart-panel detail-chart-panel">
+          <div class="chart-head">
+            <span class="stat-label">Prix / Date</span>
+            <div class="chart-head-meta">
+              <span id="dialog-history-mode" class="toolbar-count"></span>
+              <span id="dialog-history-count" class="toolbar-count"></span>
             </div>
-            <svg id="dialog-chart" viewBox="0 0 640 240" preserveAspectRatio="none"></svg>
-            <div id="dialog-chart-selection" class="chart-selection subtitle">Selectionne un point du graphe pour voir le detail.</div>
           </div>
+          <svg id="dialog-chart" viewBox="0 0 640 280" preserveAspectRatio="none"></svg>
+          <div id="dialog-chart-selection" class="chart-selection subtitle">Selectionne un point du graphe pour voir le detail.</div>
+        </section>
 
-          <div class="history-panel">
-            <div class="history-head">
-              <span class="stat-label">Snapshots</span>
-            </div>
-            <div id="dialog-history" class="history-list"></div>
+        <section class="history-panel">
+          <div class="history-head">
+            <span class="stat-label">Snapshots</span>
           </div>
-        </div>
-      </div>
-    </dialog>
+          <div id="dialog-history" class="history-list"></div>
+        </section>
+      </main>
+    </section>
 
     <section id="quote-draft-panel" class="quote-draft-panel" hidden>
       <div class="quote-draft-copy">
