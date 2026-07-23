@@ -127,7 +127,7 @@
     <section id="binder-detail-page" class="page screen-page" hidden>
       <main class="stack-layout">
         <section class="panel binder-detail-panel">
-          <div class="pokedex-page-head">
+          <div class="pokedex-page-head binder-detail-head">
             <button id="binder-detail-back" class="icon-button" type="button" aria-label="Retour aux classeurs">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="m15 18-6-6 6-6"></path>
@@ -136,6 +136,13 @@
             <div>
               <h2 id="binder-detail-title">Classeur</h2>
             </div>
+            <button id="binder-sort-toggle" class="icon-button" type="button" aria-label="Trier les cartes">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16"></path>
+                <path d="M7 12h10"></path>
+                <path d="M10 17h4"></path>
+              </svg>
+            </button>
           </div>
           <div id="binder-detail-content"></div>
         </section>
@@ -387,6 +394,39 @@
         <div class="quote-draft-actions">
           <button id="binder-delete-confirm" class="danger-button" type="button">Supprimer</button>
           <button id="binder-delete-cancel-secondary" class="secondary-button" type="button">Annuler</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="binder-sort-modal" class="modal-backdrop" hidden>
+      <div class="modal-panel binder-modal" role="dialog" aria-modal="true" aria-labelledby="binder-sort-title">
+        <div class="modal-head">
+          <h2 id="binder-sort-title">Trier les cartes</h2>
+          <button id="binder-sort-cancel" class="icon-button" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18"></path>
+              <path d="m6 6 12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <label class="quote-field">
+          <span class="history-cell-label">Ordre</span>
+          <select id="binder-sort-field">
+            <option value="date">Date d'ajout</option>
+            <option value="price">Prix</option>
+            <option value="name">Nom</option>
+          </select>
+        </label>
+        <label class="quote-field">
+          <span class="history-cell-label">Direction</span>
+          <select id="binder-sort-direction">
+            <option value="desc">Decroissant</option>
+            <option value="asc">Croissant</option>
+          </select>
+        </label>
+        <div class="quote-draft-actions">
+          <button id="binder-sort-apply" class="primary-button" type="button">Appliquer</button>
+          <button id="binder-sort-cancel-secondary" class="secondary-button" type="button">Annuler</button>
         </div>
       </div>
     </section>

@@ -20,18 +20,9 @@ const state = {
   ownedCards: [],
   pokedexPage: 0,
   binderDetailPage: 0,
+  binderSortField: "date",
+  binderSortDirection: "desc",
   activeBinderId: null,
-  draggedOwnedCardId: null,
-  touchDraggedOwnedCardId: null,
-  suppressNextBinderClick: false,
-  touchDragTimer: null,
-  touchDragStartX: 0,
-  touchDragStartY: 0,
-  touchDragPointerId: null,
-  touchDragGhost: null,
-  binderDragSourceButton: null,
-  justFinishedBinderDrag: false,
-  binderEdgeTimer: null,
   nationalPokedex: null,
   pendingOwnedCardDraft: null,
   pendingBinderDeleteId: null,
@@ -95,6 +86,13 @@ const els = {
   binderDetailBack: document.querySelector("#binder-detail-back"),
   binderDetailTitle: document.querySelector("#binder-detail-title"),
   binderDetailContent: document.querySelector("#binder-detail-content"),
+  binderSortToggle: document.querySelector("#binder-sort-toggle"),
+  binderSortModal: document.querySelector("#binder-sort-modal"),
+  binderSortField: document.querySelector("#binder-sort-field"),
+  binderSortDirection: document.querySelector("#binder-sort-direction"),
+  binderSortApply: document.querySelector("#binder-sort-apply"),
+  binderSortCancel: document.querySelector("#binder-sort-cancel"),
+  binderSortCancelSecondary: document.querySelector("#binder-sort-cancel-secondary"),
   binderCreateToggle: document.querySelector("#binder-create-toggle"),
   binderCreateModal: document.querySelector("#binder-create-modal"),
   binderCreateCancel: document.querySelector("#binder-create-cancel"),
@@ -1058,86 +1056,6 @@ function binderOwnedCards(binderId) {
   return state.ownedCards.filter((card) => card.binderId === binderId);
 }
 
-function binderPositionKey(page, slot) {
-  return `${page}:${slot}`;
-}
-
-function findFirstFreeBinderPosition(occupied) {
-  for (let page = 1; page < 500; page += 1) {
-    for (let slot = 1; slot <= 9; slot += 1) {
-      const key = binderPositionKey(page, slot);
-      if (!occupied.has(key)) {
-        return { page, slot, key };
-      }
-    }
-  }
-  return { page: 1, slot: 1, key: "1:1" };
-}
-
-async function ensureBinderPositions(binderId) {
-  const cards = binderOwnedCards(binderId).sort((left, right) =>
-    String(left.createdAt || "").localeCompare(String(right.createdAt || "")),
-  );
-  const occupied = new Set();
-  let changed = false;
-  for (const card of cards) {
-    const page = Number(card.page);
-    const slot = Number(card.slot);
-    const hasValidPosition = Number.isInteger(page) && page > 0 && Number.isInteger(slot) && slot >= 1 && slot <= 9;
-    const key = hasValidPosition ? binderPositionKey(page, slot) : "";
-    if (hasValidPosition && !occupied.has(key)) {
-      occupied.add(key);
-      continue;
-    }
-    const next = findFirstFreeBinderPosition(occupied);
-    occupied.add(next.key);
-    await OpenCardexStore.saveOwnedCard({ ...card, page: next.page, slot: next.slot });
-    card.page = next.page;
-    card.slot = next.slot;
-    changed = true;
-  }
-  if (changed) {
-    state.ownedCards = await OpenCardexStore.getOwnedCards();
-  }
-}
-
-async function buildBinderSlotViews(binderId) {
-  await ensureBinderPositions(binderId);
-  const views = await Promise.all(binderOwnedCards(binderId).map(getOwnedCardView));
-  const byPosition = new Map();
-  let maxPage = 1;
-  for (const view of views) {
-    const page = Math.max(1, Number(view.ownedCard.page) || 1);
-    const slot = Math.min(9, Math.max(1, Number(view.ownedCard.slot) || 1));
-    maxPage = Math.max(maxPage, page);
-    byPosition.set(binderPositionKey(page, slot), view);
-  }
-  const lastPageFull = Array.from({ length: 9 }, (_, index) => index + 1).every((slot) =>
-    byPosition.has(binderPositionKey(maxPage, slot)),
-  );
-  return { byPosition, pageCount: lastPageFull ? maxPage + 1 : maxPage };
-}
-
-async function moveOwnedCardToSlot(ownedCardId, targetPage, targetSlot) {
-  const source = state.ownedCards.find((card) => card.id === ownedCardId);
-  if (!source || source.binderId !== state.activeBinderId) return;
-  const target = state.ownedCards.find(
-    (card) =>
-      card.binderId === state.activeBinderId &&
-      Number(card.page) === targetPage &&
-      Number(card.slot) === targetSlot &&
-      card.id !== ownedCardId,
-  );
-  const sourcePage = Number(source.page) || 1;
-  const sourceSlot = Number(source.slot) || 1;
-  await OpenCardexStore.saveOwnedCard({ ...source, page: targetPage, slot: targetSlot });
-  if (target) {
-    await OpenCardexStore.saveOwnedCard({ ...target, page: sourcePage, slot: sourceSlot });
-  }
-  await loadCollectionData();
-  await renderBinderDetailPage();
-}
-
 function setBinderPage(nextPage, pageCount, direction = 0) {
   const boundedPage = Math.min(Math.max(nextPage, 0), pageCount - 1);
   if (boundedPage === state.binderDetailPage) return;
@@ -1148,102 +1066,54 @@ function setBinderPage(nextPage, pageCount, direction = 0) {
   });
 }
 
-function removeBinderDragGhost() {
-  state.touchDragGhost?.remove();
-  state.touchDragGhost = null;
-}
-
-function createBinderDragGhost(slotButton, clientX, clientY) {
-  removeBinderDragGhost();
-  const image = slotButton.querySelector("img");
-  if (!image) return;
-  const rect = slotButton.getBoundingClientRect();
-  const ghost = document.createElement("div");
-  ghost.className = "binder-drag-ghost";
-  ghost.style.width = `${rect.width}px`;
-  ghost.style.height = `${rect.height}px`;
-  ghost.innerHTML = `<img src="${image.src}" alt="">`;
-  document.body.appendChild(ghost);
-  state.touchDragGhost = ghost;
-  moveBinderDragGhost(clientX, clientY);
-}
-
-function startBinderPointerDrag(slotButton, event) {
-  const ownedCardId = slotButton.dataset.ownedId || null;
-  if (!ownedCardId) return;
-  state.touchDraggedOwnedCardId = ownedCardId;
-  state.binderDragSourceButton = slotButton;
-  slotButton.classList.add("is-touch-dragging");
-  createBinderDragGhost(slotButton, event.clientX, event.clientY);
-  try {
-    slotButton.setPointerCapture?.(event.pointerId);
-  } catch {
-    // Pointer capture may fail if the pointer has already ended.
-  }
-}
-
-function moveBinderDragGhost(clientX, clientY) {
-  const ghost = state.touchDragGhost;
-  if (!ghost) return;
-  ghost.style.transform = `translate3d(${clientX}px, ${clientY}px, 0) translate(-50%, -50%) rotate(2deg) scale(1.04)`;
-}
-
-function cancelBinderTouchDrag(article) {
-  window.clearTimeout(state.touchDragTimer);
-  window.clearTimeout(state.binderEdgeTimer);
-  state.touchDraggedOwnedCardId = null;
-  state.touchDragPointerId = null;
-  state.binderDragSourceButton = null;
-  removeBinderDragGhost();
-  article?.querySelectorAll(".is-touch-dragging").forEach((item) => item.classList.remove("is-touch-dragging"));
-}
-
 function openBinderDetail(binderId) {
   state.activeBinderId = binderId;
   state.binderDetailPage = 0;
   switchPage("binder-detail");
 }
 
-function scheduleBinderEdgeTurn(slot) {
-  window.clearTimeout(state.binderEdgeTimer);
-  const isLeftEdge = [1, 4, 7].includes(slot);
-  const isRightEdge = [3, 6, 9].includes(slot);
-  if (!isLeftEdge && !isRightEdge) return;
-  state.binderEdgeTimer = window.setTimeout(async () => {
-    const direction = isLeftEdge ? -1 : 1;
-    const article = els.binderDetailContent.querySelector(".binder-page-board");
-    if (!article) return;
-    const pageCount = Number(article.dataset.pageCount || 1);
-    const nextPage = Math.min(Math.max(state.binderDetailPage + direction, 0), pageCount - 1);
-    if (nextPage !== state.binderDetailPage) {
-      setBinderPage(nextPage, pageCount, direction);
-    }
-  }, 650);
+function compareBinderCardViews(left, right) {
+  const direction = state.binderSortDirection === "asc" ? 1 : -1;
+  if (state.binderSortField === "name") {
+    return direction * left.detail.name.localeCompare(right.detail.name, "fr", { sensitivity: "base" });
+  }
+  if (state.binderSortField === "price") {
+    const leftPrice = left.price?.marketPrice ?? getLatestMarketPrice(left.detail) ?? -1;
+    const rightPrice = right.price?.marketPrice ?? getLatestMarketPrice(right.detail) ?? -1;
+    return direction * (leftPrice - rightPrice);
+  }
+  return direction * String(left.ownedCard.createdAt || "").localeCompare(String(right.ownedCard.createdAt || ""));
 }
 
-function scheduleBinderEdgeTurnFromPoint(clientX, pageCount) {
-  window.clearTimeout(state.binderEdgeTimer);
-  const board = els.binderDetailContent.querySelector(".binder-page-board");
-  if (!board) return;
-  const rect = board.getBoundingClientRect();
-  const edgeSize = Math.min(72, rect.width * 0.22);
-  const direction = clientX - rect.left < edgeSize ? -1 : rect.right - clientX < edgeSize ? 1 : 0;
-  if (!direction) return;
-  state.binderEdgeTimer = window.setTimeout(async () => {
-    const nextPage = Math.min(Math.max(state.binderDetailPage + direction, 0), pageCount - 1);
-    if (nextPage !== state.binderDetailPage) {
-      setBinderPage(nextPage, pageCount, direction);
-    }
-  }, 650);
+function openBinderSortModal() {
+  els.binderSortField.value = state.binderSortField;
+  els.binderSortDirection.value = state.binderSortDirection;
+  els.binderSortModal.hidden = false;
+}
+
+function closeBinderSortModal() {
+  els.binderSortModal.hidden = true;
+}
+
+async function applyBinderSort() {
+  state.binderSortField = els.binderSortField.value;
+  state.binderSortDirection = els.binderSortDirection.value;
+  state.binderDetailPage = 0;
+  closeBinderSortModal();
+  await renderBinderDetailPage();
 }
 
 async function renderBinderDetailPage() {
   const binder = getBinderById(state.activeBinderId);
   if (!binder || !els.binderDetailContent) return;
   els.binderDetailTitle.textContent = binder.name;
-  const { byPosition, pageCount } = await buildBinderSlotViews(binder.id);
+  const views = await Promise.all(binderOwnedCards(binder.id).map(getOwnedCardView));
+  views.sort(compareBinderCardViews);
+  const pageSize = 9;
+  const pageCount = Math.max(1, Math.ceil(views.length / pageSize));
   state.binderDetailPage = Math.min(Math.max(state.binderDetailPage, 0), pageCount - 1);
   const pageNumber = state.binderDetailPage + 1;
+  const pageViews = views.slice(state.binderDetailPage * pageSize, state.binderDetailPage * pageSize + pageSize);
   const article = document.createElement("article");
   article.className = "binder-page-board";
   if (state.binderPageDirection) {
@@ -1258,14 +1128,15 @@ async function renderBinderDetailPage() {
     <div class="binder-page-grid">
       ${Array.from({ length: 9 }, (_, index) => {
         const slot = index + 1;
-        const view = byPosition.get(binderPositionKey(pageNumber, slot));
+        const view = pageViews[index];
         return `
-          <button class="binder-slot${view ? " has-card" : ""}" type="button" data-slot="${slot}" ${view ? `data-owned-id="${view.ownedCard.id}"` : ""}>
+          <button class="binder-slot${view ? " has-card" : ""}" type="button" data-slot="${slot}" ${view ? `data-card-id="${view.detail.id}"` : ""}>
             ${
               view?.detail.image_url
                 ? `<img src="${view.detail.image_url}" alt="${escapeHtml(view.detail.name)}" loading="lazy">`
                 : `<span class="binder-empty-slot"></span>`
             }
+            ${view ? `<span class="binder-slot-price">${formatPrice(view.price?.marketPrice ?? getLatestMarketPrice(view.detail))}</span>` : ""}
           </button>
         `;
       }).join("")}
@@ -1296,11 +1167,8 @@ async function renderBinderDetailPage() {
     swipeStartX = event.touches[0]?.clientX || 0;
   }, { passive: true });
   article.addEventListener("touchend", async (event) => {
-    window.clearTimeout(state.touchDragTimer);
     const endX = event.changedTouches[0]?.clientX || swipeStartX;
     const delta = endX - swipeStartX;
-    if (state.justFinishedBinderDrag) return;
-    if (state.touchDraggedOwnedCardId) return;
     if (Math.abs(delta) < 50) return;
     const nextPage = Math.min(Math.max(state.binderDetailPage + (delta < 0 ? 1 : -1), 0), pageCount - 1);
     if (nextPage !== state.binderDetailPage) {
@@ -1309,75 +1177,10 @@ async function renderBinderDetailPage() {
   }, { passive: true });
 
   article.querySelectorAll(".binder-slot").forEach((slotButton) => {
-    const slot = Number(slotButton.dataset.slot);
     slotButton.addEventListener("click", () => {
-      const ownedId = slotButton.dataset.ownedId;
-      if (state.touchDraggedOwnedCardId || state.suppressNextBinderClick) {
-        state.suppressNextBinderClick = false;
-        return;
+      if (slotButton.dataset.cardId) {
+        openCardDetail(slotButton.dataset.cardId);
       }
-      const owned = state.ownedCards.find((card) => card.id === ownedId);
-      if (owned) openCardDetail(owned.cardId);
-    });
-    slotButton.addEventListener("pointerdown", (event) => {
-      if (!slotButton.dataset.ownedId) return;
-      window.clearTimeout(state.touchDragTimer);
-      state.touchDragStartX = event.clientX;
-      state.touchDragStartY = event.clientY;
-      state.touchDragPointerId = event.pointerId;
-      state.binderDragSourceButton = slotButton;
-      if (event.pointerType === "mouse") {
-        event.preventDefault();
-      } else {
-        state.touchDragTimer = window.setTimeout(() => {
-          startBinderPointerDrag(slotButton, event);
-        }, 650);
-      }
-    });
-    slotButton.addEventListener("pointermove", (event) => {
-      if (!state.touchDraggedOwnedCardId) {
-        const movedDistance = Math.hypot(event.clientX - state.touchDragStartX, event.clientY - state.touchDragStartY);
-        if (event.pointerType === "mouse" && movedDistance > 4 && state.binderDragSourceButton) {
-          startBinderPointerDrag(state.binderDragSourceButton, event);
-          moveBinderDragGhost(event.clientX, event.clientY);
-          scheduleBinderEdgeTurnFromPoint(event.clientX, pageCount);
-        } else if (event.pointerType !== "mouse" && movedDistance > 12) {
-          window.clearTimeout(state.touchDragTimer);
-        }
-        return;
-      }
-      if (state.touchDragPointerId !== null && event.pointerId !== state.touchDragPointerId) return;
-      event.preventDefault();
-      moveBinderDragGhost(event.clientX, event.clientY);
-      scheduleBinderEdgeTurnFromPoint(event.clientX, pageCount);
-    });
-    slotButton.addEventListener("pointerup", async (event) => {
-      window.clearTimeout(state.touchDragTimer);
-      if (!state.touchDraggedOwnedCardId) {
-        state.touchDragPointerId = null;
-        return;
-      }
-      event.preventDefault();
-      window.clearTimeout(state.binderEdgeTimer);
-      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest?.(".binder-slot");
-      const targetSlot = Number(target?.dataset?.slot);
-      const ownedCardId = state.touchDraggedOwnedCardId;
-      state.touchDraggedOwnedCardId = null;
-      state.touchDragPointerId = null;
-      state.binderDragSourceButton = null;
-      state.suppressNextBinderClick = true;
-      state.justFinishedBinderDrag = true;
-      removeBinderDragGhost();
-      article.querySelectorAll(".is-touch-dragging").forEach((item) => item.classList.remove("is-touch-dragging"));
-      if (targetSlot) {
-        await moveOwnedCardToSlot(ownedCardId, pageNumber, targetSlot);
-      }
-      window.setTimeout(() => {
-        state.justFinishedBinderDrag = false;
-      }, 120);
-    });
-    slotButton.addEventListener("pointercancel", () => {
-      cancelBinderTouchDrag(article);
     });
   });
 }
@@ -2273,6 +2076,7 @@ els.mobileNavAccount.addEventListener("click", () => switchPage("account"));
 els.pokedexBanner?.addEventListener("click", () => switchPage("pokedex"));
 els.pokedexBack?.addEventListener("click", () => switchPage("binders"));
 els.binderDetailBack?.addEventListener("click", () => switchPage("binders"));
+els.binderSortToggle?.addEventListener("click", () => openBinderSortModal());
 els.dialogAddOwned.addEventListener("click", () => {
   if (state.currentDetailCard) {
     prepareOwnedCardDraft(state.currentDetailCard);
@@ -2298,12 +2102,27 @@ els.binderDeleteModal?.addEventListener("click", (event) => {
     closeBinderDeleteModal();
   }
 });
+els.binderSortCancel?.addEventListener("click", () => closeBinderSortModal());
+els.binderSortCancelSecondary?.addEventListener("click", () => closeBinderSortModal());
+els.binderSortApply?.addEventListener("click", () => {
+  applyBinderSort().catch((error) => {
+    els.binderDetailContent.innerHTML = `<p class='subtitle'>Tri impossible: ${escapeHtml(String(error))}</p>`;
+  });
+});
+els.binderSortModal?.addEventListener("click", (event) => {
+  if (event.target === els.binderSortModal) {
+    closeBinderSortModal();
+  }
+});
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !els.binderCreateModal.hidden) {
     closeBinderCreateModal();
   }
   if (event.key === "Escape" && !els.binderDeleteModal.hidden) {
     closeBinderDeleteModal();
+  }
+  if (event.key === "Escape" && !els.binderSortModal.hidden) {
+    closeBinderSortModal();
   }
 });
 els.binderForm.addEventListener("submit", async (event) => {
