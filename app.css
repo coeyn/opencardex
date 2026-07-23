@@ -869,21 +869,19 @@ select:focus {
 .card-detail-page {
   max-width: 980px;
   margin: 0 auto;
-  padding-top: 92px;
+  padding-top: 0;
 }
 
 .detail-topbar {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 50%;
   z-index: 75;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) 38px;
   gap: 8px;
   align-items: center;
-  width: min(980px, 100vw);
+  width: 100%;
   padding: 8px 10px;
-  transform: translateX(-50%);
   background: rgba(245, 247, 251, 0.96);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
@@ -939,7 +937,7 @@ select:focus {
   gap: 16px;
   width: 100%;
   min-width: 0;
-  padding-top: 0;
+  padding-top: 16px;
 }
 
 .detail-photo-panel {
