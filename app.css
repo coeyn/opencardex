@@ -369,7 +369,70 @@ body.is-detail-page {
 }
 
 .binder-card.is-system-binder {
+  grid-column: 1 / -1;
   background: #fff;
+}
+
+.pokedex-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pokedex-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 0.72;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.pokedex-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 12px rgba(17, 24, 39, 0.16));
+}
+
+.pokedex-price {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 4px 10px rgba(17, 24, 39, 0.12);
+}
+
+.pokedex-empty {
+  grid-column: 1 / -1;
+  padding: 16px 0;
+  text-align: center;
+}
+
+.pokedex-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pokedex-pager .icon-button:disabled,
+.catalog-binder-menu button:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .series-stats,

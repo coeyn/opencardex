@@ -18,6 +18,7 @@ const state = {
   detailReturnPage: "catalog",
   binders: [],
   ownedCards: [],
+  pokedexPage: 0,
   pendingOwnedCardDraft: null,
   ownedCardSearchResults: [],
   cardDetailsCache: new Map(),
@@ -721,7 +722,7 @@ async function loadCollectionData() {
   }
   renderCollectionFilters();
   renderOwnedDraftBinderOptions();
-  renderBinders();
+  await renderBinders();
   if (els.collectionGrid) {
     await renderCollection();
   }
@@ -838,7 +839,88 @@ async function renderCollection() {
   }
 }
 
-function renderBinders() {
+function normalizePokemonName(cardName) {
+  return String(cardName || "")
+    .replace(/\b(ex|vmax|vstar|v-union|v|gx|tag team|prisme|radieux|radiant|shiny)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function buildPokedexEntries() {
+  const views = await buildOwnedCardViews();
+  const bestByPokemon = new Map();
+  for (const view of views) {
+    const pokemonName = normalizePokemonName(view.detail.name);
+    if (!pokemonName) continue;
+    const value = view.price?.marketPrice ?? getLatestMarketPrice(view.detail) ?? 0;
+    const current = bestByPokemon.get(pokemonName);
+    if (!current || value > current.value) {
+      bestByPokemon.set(pokemonName, { ...view, pokemonName, value });
+    }
+  }
+  return [...bestByPokemon.values()].sort((left, right) =>
+    left.pokemonName.localeCompare(right.pokemonName, "fr", { sensitivity: "base" }),
+  );
+}
+
+async function renderPokedexBinder(article) {
+  const entries = await buildPokedexEntries();
+  const pageSize = 9;
+  const pageCount = Math.max(1, Math.ceil(entries.length / pageSize));
+  state.pokedexPage = Math.min(Math.max(state.pokedexPage, 0), pageCount - 1);
+  const pageEntries = entries.slice(state.pokedexPage * pageSize, state.pokedexPage * pageSize + pageSize);
+  article.innerHTML = `
+    <div class="binder-card-head">
+      <div>
+        <h3>Pokédex</h3>
+        <p class="subtitle">Meilleure carte possédée pour chaque Pokémon.</p>
+      </div>
+      <span class="meta-chip">Auto</span>
+    </div>
+    <div class="pokedex-grid">
+      ${
+        pageEntries.length
+          ? pageEntries
+              .map((entry) => `
+                <button class="pokedex-slot" type="button" data-card-id="${entry.detail.id}">
+                  ${
+                    entry.detail.image_url
+                      ? `<img src="${entry.detail.image_url}" alt="${escapeHtml(entry.detail.name)}" loading="lazy">`
+                      : `<span class="card-placeholder">Image indisponible</span>`
+                  }
+                  <span class="pokedex-price">${formatPrice(entry.value)}</span>
+                </button>
+              `)
+              .join("")
+          : `<p class="subtitle pokedex-empty">Ajoute des cartes dans tes classeurs pour remplir le Pokédex.</p>`
+      }
+    </div>
+    <div class="pokedex-pager">
+      <button class="icon-button" type="button" data-pokedex-prev aria-label="Page precedente">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+      </button>
+      <span>${entries.length ? state.pokedexPage + 1 : 0} / ${pageCount}</span>
+      <button class="icon-button" type="button" data-pokedex-next aria-label="Page suivante">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+      </button>
+    </div>
+  `;
+  article.querySelector("[data-pokedex-prev]").disabled = state.pokedexPage <= 0;
+  article.querySelector("[data-pokedex-next]").disabled = state.pokedexPage >= pageCount - 1;
+  article.querySelector("[data-pokedex-prev]").addEventListener("click", async () => {
+    state.pokedexPage -= 1;
+    await renderPokedexBinder(article);
+  });
+  article.querySelector("[data-pokedex-next]").addEventListener("click", async () => {
+    state.pokedexPage += 1;
+    await renderPokedexBinder(article);
+  });
+  article.querySelectorAll("[data-card-id]").forEach((button) => {
+    button.addEventListener("click", () => openCardDetail(button.dataset.cardId));
+  });
+}
+
+async function renderBinders() {
   els.binderList.innerHTML = "";
   const sortedBinders = [...state.binders].sort((left, right) => {
     if (left.system && !right.system) return -1;
@@ -852,6 +934,12 @@ function renderBinders() {
     const isSystemBinder = Boolean(binder.system || binder.id === OpenCardexStore.systemPokedexBinderId);
     const article = document.createElement("article");
     article.className = `binder-card${isSystemBinder ? " is-system-binder" : ""}`;
+    if (isSystemBinder) {
+      article.innerHTML = "<p class='subtitle'>Chargement du Pokédex...</p>";
+      els.binderList.appendChild(article);
+      await renderPokedexBinder(article);
+      continue;
+    }
     article.innerHTML = `
       <div class="binder-card-head">
         <h3>${escapeHtml(binder.name)}</h3>
@@ -866,10 +954,10 @@ function renderBinders() {
       `}
     `;
     article.querySelector("[data-delete-binder]")?.addEventListener("click", async () => {
-      if (!confirm("Supprimer ce classeur ? Les cartes seront rattachees au Pokédex.")) return;
+      if (!confirm("Supprimer ce classeur ? Les cartes resteront dans ta collection, sans classeur.")) return;
       await OpenCardexStore.deleteBinder(binder.id);
       for (const card of state.ownedCards.filter((item) => item.binderId === binder.id)) {
-        await OpenCardexStore.saveOwnedCard({ ...card, binderId: OpenCardexStore.systemPokedexBinderId });
+        await OpenCardexStore.saveOwnedCard({ ...card, binderId: undefined });
       }
       await loadCollectionData();
     });
@@ -879,13 +967,11 @@ function renderBinders() {
 
 function renderOwnedDraftBinderOptions() {
   const pokedexId = OpenCardexStore.systemPokedexBinderId || "";
-  els.ownedDraftBinder.innerHTML = [
-    `<option value="${pokedexId}">Pokédex</option>`,
-    ...state.binders
-      .filter((binder) => binder.id !== pokedexId)
-      .map((binder) => `<option value="${binder.id}">${escapeHtml(binder.name)}</option>`),
-  ].join("");
-  els.ownedDraftBinder.value = pokedexId;
+  const userBinders = state.binders.filter((binder) => binder.id !== pokedexId);
+  els.ownedDraftBinder.innerHTML = userBinders.length
+    ? userBinders.map((binder) => `<option value="${binder.id}">${escapeHtml(binder.name)}</option>`).join("")
+    : `<option value="">Crée un classeur avant d'ajouter une carte</option>`;
+  els.ownedDraftBinder.disabled = !userBinders.length;
 }
 
 function prepareOwnedCardDraft(card) {
@@ -905,9 +991,13 @@ function prepareOwnedCardDraft(card) {
 }
 
 async function addCardToBinder(card, binderId) {
+  if (!binderId || binderId === OpenCardexStore.systemPokedexBinderId) {
+    alert("Crée ou choisis un classeur avant d'ajouter une carte.");
+    return;
+  }
   await OpenCardexStore.saveOwnedCard({
     cardId: card.id,
-    binderId: binderId || OpenCardexStore.systemPokedexBinderId,
+    binderId,
     quantity: 1,
     condition: "near_mint",
     language: "fr",
@@ -923,9 +1013,13 @@ async function addCardToBinder(card, binderId) {
 async function confirmOwnedCardDraft() {
   const card = state.pendingOwnedCardDraft;
   if (!card) return;
+  if (!els.ownedDraftBinder.value) {
+    alert("Crée un classeur avant d'ajouter une carte.");
+    return;
+  }
   await OpenCardexStore.saveOwnedCard({
     cardId: card.id,
-    binderId: els.ownedDraftBinder.value || OpenCardexStore.systemPokedexBinderId,
+    binderId: els.ownedDraftBinder.value,
     quantity: els.ownedDraftQuantity.value,
     condition: els.ownedDraftCondition.value,
     language: els.ownedDraftLanguage.value,
@@ -1314,11 +1408,12 @@ function renderCards() {
       </div>
     `;
     const menu = catalogActions.querySelector(".catalog-binder-menu");
-    menu.innerHTML = [
-      ...state.binders.map((binder) =>
-        `<button type="button" data-binder-id="${binder.id}">${escapeHtml(binder.name)}</button>`,
-      ),
-    ].join("");
+    const userBinders = state.binders.filter((binder) => binder.id !== OpenCardexStore.systemPokedexBinderId);
+    menu.innerHTML = userBinders.length
+      ? userBinders
+          .map((binder) => `<button type="button" data-binder-id="${binder.id}">${escapeHtml(binder.name)}</button>`)
+          .join("")
+      : `<button type="button" disabled>Crée un classeur</button>`;
     catalogActions.querySelector(".catalog-add-button").addEventListener("click", (event) => {
       event.stopPropagation();
       document.querySelectorAll(".catalog-binder-menu").forEach((item) => {
