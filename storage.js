@@ -1,6 +1,7 @@
 (function () {
   const DB_NAME = "opencardex";
   const DB_VERSION = 1;
+  const SYSTEM_POKEDEX_BINDER_ID = "system_pokedex";
 
   function requestToPromise(request) {
     return new Promise((resolve, reject) => {
@@ -54,13 +55,26 @@
 
   function normalizeBinder(input) {
     const timestamp = nowIso();
+    const isSystem = Boolean(input.system || input.isSystem || input.id === SYSTEM_POKEDEX_BINDER_ID);
     return {
-      id: String(input.id || createId("binder")),
+      id: isSystem ? SYSTEM_POKEDEX_BINDER_ID : String(input.id || createId("binder")),
       name: String(input.name || "Classeur").trim() || "Classeur",
       description: input.description ? String(input.description) : "",
+      system: isSystem,
+      locked: Boolean(input.locked || isSystem),
       createdAt: input.createdAt || timestamp,
       updatedAt: timestamp,
     };
+  }
+
+  function buildSystemPokedexBinder() {
+    return normalizeBinder({
+      id: SYSTEM_POKEDEX_BINDER_ID,
+      name: "Pokédex",
+      description: "Classeur automatique, non modifiable.",
+      system: true,
+      locked: true,
+    });
   }
 
   function normalizeOwnedCard(input) {
@@ -165,8 +179,15 @@
     getOwnedCards: () => getAll("ownedCards"),
     saveBinder: (binder) => put("binders", normalizeBinder(binder)),
     saveOwnedCard: (card) => put("ownedCards", normalizeOwnedCard(card)),
-    deleteBinder: (id) => remove("binders", id),
+    deleteBinder: (id) => {
+      if (id === SYSTEM_POKEDEX_BINDER_ID) {
+        return Promise.resolve();
+      }
+      return remove("binders", id);
+    },
     deleteOwnedCard: (id) => remove("ownedCards", id),
+    systemPokedexBinderId: SYSTEM_POKEDEX_BINDER_ID,
+    buildSystemPokedexBinder,
     exportBackup,
     importBackup,
   };

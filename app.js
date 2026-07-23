@@ -66,26 +66,15 @@ const els = {
   mobileNavCatalog: document.querySelector("#mobile-nav-catalog"),
   mobileNavBinders: document.querySelector("#mobile-nav-binders"),
   mobileNavAccount: document.querySelector("#mobile-nav-account"),
-  navQuoteCount: document.querySelector("#nav-quote-count"),
-  navQuoteTotal: document.querySelector("#nav-quote-total"),
   catalogPage: document.querySelector("#catalog-page"),
   bindersPage: document.querySelector("#binders-page"),
   accountPage: document.querySelector("#account-page"),
   cardDetailPage: document.querySelector("#card-detail-page"),
-  collectionSummary: document.querySelector("#collection-summary"),
-  collectionGrid: document.querySelector("#collection-grid"),
-  collectionFilterBinder: document.querySelector("#collection-filter-binder"),
-  collectionSort: document.querySelector("#collection-sort"),
-  collectionExportButton: document.querySelector("#collection-export-button"),
-  collectionImportButton: document.querySelector("#collection-import-button"),
-  collectionImportInput: document.querySelector("#collection-import-input"),
+  binderCreateToggle: document.querySelector("#binder-create-toggle"),
   binderForm: document.querySelector("#binder-form"),
   binderName: document.querySelector("#binder-name"),
   binderDescription: document.querySelector("#binder-description"),
   binderList: document.querySelector("#binder-list"),
-  ownedCardSearch: document.querySelector("#owned-card-search"),
-  ownedCardSearchButton: document.querySelector("#owned-card-search-button"),
-  ownedCardSearchResults: document.querySelector("#owned-card-search-results"),
   cardTotal: document.querySelector("#card-total"),
   cardsGrid: document.querySelector("#cards-grid"),
   cardSearch: document.querySelector("#card-search"),
@@ -114,15 +103,6 @@ const els = {
   dialogChart: document.querySelector("#dialog-chart"),
   dialogChartSelection: document.querySelector("#dialog-chart-selection"),
   dialogHistory: document.querySelector("#dialog-history"),
-  quoteList: document.querySelector("#quote-list"),
-  quoteCount: document.querySelector("#quote-count"),
-  quoteTotal: document.querySelector("#quote-total"),
-  quoteImportButton: document.querySelector("#quote-import-button"),
-  quoteImportInput: document.querySelector("#quote-import-input"),
-  quoteSaveButton: document.querySelector("#quote-save-button"),
-  quoteExportJsonButton: document.querySelector("#quote-export-json-button"),
-  quoteExportButton: document.querySelector("#quote-export-button"),
-  quoteResetButton: document.querySelector("#quote-reset-button"),
   quoteDraftPanel: document.querySelector("#quote-draft-panel"),
   quoteDraftTitle: document.querySelector("#quote-draft-title"),
   quoteDraftSubtitle: document.querySelector("#quote-draft-subtitle"),
@@ -731,13 +711,10 @@ async function loadCollectionData() {
   if (!window.OpenCardexStore) return;
   state.binders = await OpenCardexStore.getBinders();
   state.ownedCards = await OpenCardexStore.getOwnedCards();
-  if (!state.binders.length) {
-    state.binders = [
-      await OpenCardexStore.saveBinder({
-        name: "Classeur principal",
-        description: "Classeur cree automatiquement.",
-      }),
-    ];
+  const pokedexId = OpenCardexStore.systemPokedexBinderId;
+  if (pokedexId && !state.binders.some((binder) => binder.id === pokedexId)) {
+    const pokedexBinder = await OpenCardexStore.saveBinder(OpenCardexStore.buildSystemPokedexBinder());
+    state.binders = [pokedexBinder, ...state.binders];
   }
   renderCollectionFilters();
   renderOwnedDraftBinderOptions();
@@ -860,25 +837,36 @@ async function renderCollection() {
 
 function renderBinders() {
   els.binderList.innerHTML = "";
-  for (const binder of state.binders) {
+  const sortedBinders = [...state.binders].sort((left, right) => {
+    if (left.system && !right.system) return -1;
+    if (!left.system && right.system) return 1;
+    return String(left.createdAt || "").localeCompare(String(right.createdAt || ""));
+  });
+  for (const binder of sortedBinders) {
     const quantity = state.ownedCards
       .filter((card) => card.binderId === binder.id)
       .reduce((sum, card) => sum + card.quantity, 0);
+    const isSystemBinder = Boolean(binder.system || binder.id === OpenCardexStore.systemPokedexBinderId);
     const article = document.createElement("article");
-    article.className = "binder-card";
+    article.className = `binder-card${isSystemBinder ? " is-system-binder" : ""}`;
     article.innerHTML = `
-      <h3>${escapeHtml(binder.name)}</h3>
+      <div class="binder-card-head">
+        <h3>${escapeHtml(binder.name)}</h3>
+        ${isSystemBinder ? `<span class="meta-chip">Auto</span>` : ""}
+      </div>
       <p class="subtitle">${escapeHtml(binder.description || "Aucune description")}</p>
       <p class="subtitle">${quantity} carte(s)</p>
-      <div class="quote-draft-actions">
-        <button class="quote-remove" type="button" data-delete-binder="${binder.id}">Supprimer</button>
-      </div>
+      ${isSystemBinder ? "" : `
+        <div class="quote-draft-actions">
+          <button class="quote-remove" type="button" data-delete-binder="${binder.id}">Supprimer</button>
+        </div>
+      `}
     `;
-    article.querySelector("[data-delete-binder]").addEventListener("click", async () => {
-      if (!confirm("Supprimer ce classeur ? Les cartes resteront dans la collection sans classeur.")) return;
+    article.querySelector("[data-delete-binder]")?.addEventListener("click", async () => {
+      if (!confirm("Supprimer ce classeur ? Les cartes seront rattachees au Pokédex.")) return;
       await OpenCardexStore.deleteBinder(binder.id);
       for (const card of state.ownedCards.filter((item) => item.binderId === binder.id)) {
-        await OpenCardexStore.saveOwnedCard({ ...card, binderId: undefined });
+        await OpenCardexStore.saveOwnedCard({ ...card, binderId: OpenCardexStore.systemPokedexBinderId });
       }
       await loadCollectionData();
     });
@@ -887,10 +875,14 @@ function renderBinders() {
 }
 
 function renderOwnedDraftBinderOptions() {
+  const pokedexId = OpenCardexStore.systemPokedexBinderId || "";
   els.ownedDraftBinder.innerHTML = [
-    `<option value="">Sans classeur</option>`,
-    ...state.binders.map((binder) => `<option value="${binder.id}">${escapeHtml(binder.name)}</option>`),
+    `<option value="${pokedexId}">Pokédex</option>`,
+    ...state.binders
+      .filter((binder) => binder.id !== pokedexId)
+      .map((binder) => `<option value="${binder.id}">${escapeHtml(binder.name)}</option>`),
   ].join("");
+  els.ownedDraftBinder.value = pokedexId;
 }
 
 function prepareOwnedCardDraft(card) {
@@ -912,7 +904,7 @@ function prepareOwnedCardDraft(card) {
 async function addCardToBinder(card, binderId) {
   await OpenCardexStore.saveOwnedCard({
     cardId: card.id,
-    binderId: binderId || undefined,
+    binderId: binderId || OpenCardexStore.systemPokedexBinderId,
     quantity: 1,
     condition: "near_mint",
     language: "fr",
@@ -930,7 +922,7 @@ async function confirmOwnedCardDraft() {
   if (!card) return;
   await OpenCardexStore.saveOwnedCard({
     cardId: card.id,
-    binderId: els.ownedDraftBinder.value || undefined,
+    binderId: els.ownedDraftBinder.value || OpenCardexStore.systemPokedexBinderId,
     quantity: els.ownedDraftQuantity.value,
     condition: els.ownedDraftCondition.value,
     language: els.ownedDraftLanguage.value,
@@ -1309,7 +1301,6 @@ function renderCards() {
     `;
     const menu = catalogActions.querySelector(".catalog-binder-menu");
     menu.innerHTML = [
-      `<button type="button" data-binder-id="">Sans classeur</button>`,
       ...state.binders.map((binder) =>
         `<button type="button" data-binder-id="${binder.id}">${escapeHtml(binder.name)}</button>`,
       ),
@@ -1723,6 +1714,12 @@ els.dialogAddOwned.addEventListener("click", () => {
     prepareOwnedCardDraft(state.currentDetailCard);
   }
 });
+els.binderCreateToggle?.addEventListener("click", () => {
+  els.binderForm.hidden = !els.binderForm.hidden;
+  if (!els.binderForm.hidden) {
+    els.binderName.focus();
+  }
+});
 els.binderForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await OpenCardexStore.saveBinder({
@@ -1731,6 +1728,7 @@ els.binderForm.addEventListener("submit", async (event) => {
   });
   els.binderName.value = "";
   els.binderDescription.value = "";
+  els.binderForm.hidden = true;
   await loadCollectionData();
 });
 els.collectionFilterBinder?.addEventListener("change", () => renderCollection());

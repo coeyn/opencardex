@@ -80,14 +80,18 @@
     <section id="binders-page" class="page screen-page" hidden>
       <main class="stack-layout">
         <section class="panel">
-          <div class="section-head">
+          <div class="section-head binders-head">
             <div>
-              <p class="eyebrow">Classeur</p>
-              <h2>Organisation</h2>
-              <p class="subtitle">Cree tes classeurs, ajoute des cartes et gere ta collection.</p>
+              <h2>Classeur</h2>
             </div>
+            <button id="binder-create-toggle" class="icon-button" type="button" aria-label="Creer un classeur">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+              </svg>
+            </button>
           </div>
-          <form id="binder-form" class="binder-form">
+          <form id="binder-form" class="binder-form" hidden>
             <input id="binder-name" type="text" placeholder="Nom du classeur" required />
             <input id="binder-description" type="text" placeholder="Description facultative" />
             <button class="primary-button" type="submit">Creer</button>
