@@ -700,12 +700,9 @@ select:focus {
 
 .catalog-card-actions {
   position: absolute;
-  left: 4px;
-  bottom: 4px;
+  inset: 0;
   z-index: 4;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  pointer-events: none;
 }
 
 .catalog-price,
@@ -720,9 +717,37 @@ select:focus {
 }
 
 .catalog-price {
+  position: absolute;
+  top: 4px;
+  left: 4px;
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   padding: 0 7px;
+  pointer-events: auto;
+}
+
+.catalog-price.is-up .catalog-trend-icon {
+  color: #7ee2a8;
+}
+
+.catalog-price.is-stable .catalog-trend-icon {
+  color: #cbd5e1;
+}
+
+.catalog-price.is-down .catalog-trend-icon {
+  color: #ff9b8f;
+}
+
+.catalog-trend-icon:empty {
+  display: none;
+}
+
+.catalog-add-wrap {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  pointer-events: auto;
 }
 
 .catalog-add-button {
@@ -732,7 +757,7 @@ select:focus {
 
 .catalog-binder-menu {
   position: absolute;
-  left: 0;
+  right: 0;
   bottom: 34px;
   display: grid;
   gap: 4px;
