@@ -869,7 +869,7 @@ select:focus {
 .card-detail-page {
   max-width: 980px;
   margin: 0 auto;
-  padding-top: 70px;
+  padding-top: 92px;
 }
 
 .detail-topbar {
@@ -939,7 +939,7 @@ select:focus {
   gap: 16px;
   width: 100%;
   min-width: 0;
-  padding-top: 16px;
+  padding-top: 0;
 }
 
 .detail-photo-panel {
