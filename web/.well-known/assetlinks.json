@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "fr.opencardex.app",
+      "sha256_cert_fingerprints": [
+        "9D:77:C5:F3:83:97:37:27:B4:3A:2B:5C:41:F7:57:A4:89:45:D4:0B:20:CB:23:DE:0B:22:CB:53:8E:D2:A6:6D"
+      ]
+    }
+  }
+]
