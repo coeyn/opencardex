@@ -1,4 +1,4 @@
-const CACHE_NAME = "opencardex-app-v22";
+const CACHE_NAME = "opencardex-app-v23";
 const APP_SHELL = [
   "./",
   "index.html",
@@ -6,6 +6,7 @@ const APP_SHELL = [
   "app.js",
   "storage.js",
   "pwa.js",
+  "data/national-pokedex.json",
   "offline.html",
   "manifest.webmanifest",
   "icons/icon.svg"
