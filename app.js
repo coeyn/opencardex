@@ -1276,12 +1276,18 @@ function renderCards() {
     addQuoteButton.remove();
 
     const marketPrice = getLatestMarketPrice(card);
+    const trendSymbol = slope.state === "up" ? "▲" : slope.state === "down" ? "▼" : slope.state === "stable" ? "■" : "";
     const catalogActions = document.createElement("div");
     catalogActions.className = "catalog-card-actions";
     catalogActions.innerHTML = `
-      <span class="catalog-price">${marketPrice === null ? "N/A" : formatPrice(marketPrice)}</span>
-      <button class="catalog-add-button" type="button" aria-label="Ajouter au classeur">+</button>
-      <div class="catalog-binder-menu" hidden></div>
+      <span class="catalog-price ${slope.state ? `is-${slope.state}` : ""}">
+        ${marketPrice === null ? "N/A" : formatPrice(marketPrice)}
+        <span class="catalog-trend-icon" aria-hidden="true">${trendSymbol}</span>
+      </span>
+      <div class="catalog-add-wrap">
+        <button class="catalog-add-button" type="button" aria-label="Ajouter au classeur">+</button>
+        <div class="catalog-binder-menu" hidden></div>
+      </div>
     `;
     const menu = catalogActions.querySelector(".catalog-binder-menu");
     menu.innerHTML = [
