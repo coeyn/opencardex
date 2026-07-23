@@ -69,8 +69,14 @@ const els = {
   mobileNavAccount: document.querySelector("#mobile-nav-account"),
   catalogPage: document.querySelector("#catalog-page"),
   bindersPage: document.querySelector("#binders-page"),
+  pokedexPage: document.querySelector("#pokedex-page"),
   accountPage: document.querySelector("#account-page"),
   cardDetailPage: document.querySelector("#card-detail-page"),
+  pokedexBanner: document.querySelector("#pokedex-banner"),
+  pokedexBannerMeta: document.querySelector("#pokedex-banner-meta"),
+  pokedexBack: document.querySelector("#pokedex-back"),
+  pokedexContent: document.querySelector("#pokedex-content"),
+  pokedexPageMeta: document.querySelector("#pokedex-page-meta"),
   binderCreateToggle: document.querySelector("#binder-create-toggle"),
   binderCreateModal: document.querySelector("#binder-create-modal"),
   binderCreateCancel: document.querySelector("#binder-create-cancel"),
@@ -722,6 +728,7 @@ async function loadCollectionData() {
   }
   renderCollectionFilters();
   renderOwnedDraftBinderOptions();
+  await renderPokedexBanner();
   await renderBinders();
   if (els.collectionGrid) {
     await renderCollection();
@@ -920,6 +927,27 @@ async function renderPokedexBinder(article) {
   });
 }
 
+async function renderPokedexBanner() {
+  if (!els.pokedexBannerMeta) return;
+  const entries = await buildPokedexEntries();
+  els.pokedexBannerMeta.textContent = entries.length
+    ? `${entries.length} Pokémon représenté(s) par ta meilleure carte possédée.`
+    : "Meilleure carte possédée pour chaque Pokémon.";
+}
+
+async function renderPokedexPage() {
+  if (!els.pokedexContent) return;
+  const article = document.createElement("article");
+  article.className = "binder-card is-system-binder pokedex-dedicated";
+  article.innerHTML = "<p class='subtitle'>Chargement du Pokédex...</p>";
+  els.pokedexContent.replaceChildren(article);
+  await renderPokedexBinder(article);
+  const entries = await buildPokedexEntries();
+  els.pokedexPageMeta.textContent = entries.length
+    ? `${entries.length} Pokémon représenté(s), 9 cartes par page.`
+    : "Ajoute des cartes dans tes classeurs pour remplir le Pokédex.";
+}
+
 async function renderBinders() {
   els.binderList.innerHTML = "";
   const sortedBinders = [...state.binders].sort((left, right) => {
@@ -932,26 +960,20 @@ async function renderBinders() {
       .filter((card) => card.binderId === binder.id)
       .reduce((sum, card) => sum + card.quantity, 0);
     const isSystemBinder = Boolean(binder.system || binder.id === OpenCardexStore.systemPokedexBinderId);
-    const article = document.createElement("article");
-    article.className = `binder-card${isSystemBinder ? " is-system-binder" : ""}`;
     if (isSystemBinder) {
-      article.innerHTML = "<p class='subtitle'>Chargement du Pokédex...</p>";
-      els.binderList.appendChild(article);
-      await renderPokedexBinder(article);
       continue;
     }
+    const article = document.createElement("article");
+    article.className = "binder-card";
     article.innerHTML = `
       <div class="binder-card-head">
         <h3>${escapeHtml(binder.name)}</h3>
-        ${isSystemBinder ? `<span class="meta-chip">Auto</span>` : ""}
       </div>
       <p class="subtitle">${escapeHtml(binder.description || "Aucune description")}</p>
       <p class="subtitle">${quantity} carte(s)</p>
-      ${isSystemBinder ? "" : `
-        <div class="quote-draft-actions">
-          <button class="quote-remove" type="button" data-delete-binder="${binder.id}">Supprimer</button>
-        </div>
-      `}
+      <div class="quote-draft-actions">
+        <button class="quote-remove" type="button" data-delete-binder="${binder.id}">Supprimer</button>
+      </div>
     `;
     article.querySelector("[data-delete-binder]")?.addEventListener("click", async () => {
       if (!confirm("Supprimer ce classeur ? Les cartes resteront dans ta collection, sans classeur.")) return;
@@ -1099,6 +1121,8 @@ function escapeHtml(value) {
 function switchPage(page) {
   const normalizedPage = page === "detail"
     ? "detail"
+    : page === "pokedex"
+    ? "pokedex"
     : page === "account"
     ? "account"
     : ["collection", "binders", "add-cards", "quote"].includes(page)
@@ -1106,19 +1130,22 @@ function switchPage(page) {
       : "catalog";
   const catalogActive = normalizedPage === "catalog";
   const bindersActive = normalizedPage === "binders";
+  const pokedexActive = normalizedPage === "pokedex";
   const accountActive = normalizedPage === "account";
   const detailActive = normalizedPage === "detail";
+  const bindersNavActive = bindersActive || pokedexActive;
 
   els.catalogPage.hidden = !catalogActive;
   els.bindersPage.hidden = !bindersActive;
+  els.pokedexPage.hidden = !pokedexActive;
   els.accountPage.hidden = !accountActive;
   els.cardDetailPage.hidden = !detailActive;
 
-  els.navBinders.classList.toggle("is-active", bindersActive);
+  els.navBinders.classList.toggle("is-active", bindersNavActive);
   els.navCatalog.classList.toggle("is-active", catalogActive);
   els.navAccount.classList.toggle("is-active", accountActive);
   els.mobileNavCatalog.classList.toggle("is-active", catalogActive);
-  els.mobileNavBinders.classList.toggle("is-active", bindersActive);
+  els.mobileNavBinders.classList.toggle("is-active", bindersNavActive);
   els.mobileNavAccount.classList.toggle("is-active", accountActive);
   document.body.classList.toggle("is-detail-page", detailActive);
   state.currentPage = normalizedPage;
@@ -1128,6 +1155,11 @@ function switchPage(page) {
       if (els.binderList) {
         els.binderList.innerHTML = `<p class='subtitle'>Classeurs indisponibles: ${escapeHtml(String(error))}</p>`;
       }
+    });
+  }
+  if (pokedexActive) {
+    renderPokedexPage().catch((error) => {
+      els.pokedexContent.innerHTML = `<p class='subtitle'>Pokédex indisponible: ${escapeHtml(String(error))}</p>`;
     });
   }
 }
@@ -1818,6 +1850,8 @@ els.navAccount.addEventListener("click", () => switchPage("account"));
 els.mobileNavCatalog.addEventListener("click", () => switchPage("catalog"));
 els.mobileNavBinders.addEventListener("click", () => switchPage("binders"));
 els.mobileNavAccount.addEventListener("click", () => switchPage("account"));
+els.pokedexBanner?.addEventListener("click", () => switchPage("pokedex"));
+els.pokedexBack?.addEventListener("click", () => switchPage("binders"));
 els.dialogAddOwned.addEventListener("click", () => {
   if (state.currentDetailCard) {
     prepareOwnedCardDraft(state.currentDetailCard);
