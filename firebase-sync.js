@@ -32,6 +32,7 @@ const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 const clientId = localStorage.getItem("opencardex_cloud_client_id") || crypto.randomUUID();
 localStorage.setItem("opencardex_cloud_client_id", clientId);
+let revisionCounter = 0;
 
 function backupRef(uid) {
   return doc(db, "users", uid, "backups", "opencardex");
@@ -55,8 +56,10 @@ function currentUserOrThrow() {
 
 async function uploadBackup(payload) {
   const user = currentUserOrThrow();
+  const revision = `${Date.now()}-${clientId}-${revisionCounter++}`;
   await setDoc(backupRef(user.uid), {
     payload,
+    revision,
     updatedAt: serverTimestamp(),
     exportedAt: payload?.exportedAt || new Date().toISOString(),
     originClientId: clientId,
@@ -83,9 +86,12 @@ function subscribeBackup(callback) {
     const data = snapshot.data();
     callback({
       payload: data?.payload || null,
+      revision: data?.revision || "",
       exportedAt: data?.exportedAt || data?.payload?.exportedAt || "",
       originClientId: data?.originClientId || "",
     });
+  }, (error) => {
+    window.dispatchEvent(new CustomEvent("opencardex-cloud-error", { detail: error.message || String(error) }));
   });
 }
 
