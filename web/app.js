@@ -17,6 +17,11 @@ const state = {
   currentPage: "catalog",
   cloudUser: null,
   cloudReady: false,
+  cloudApplyingRemote: false,
+  cloudUploadTimer: null,
+  cloudUnsubscribe: null,
+  cloudLastRemoteExportedAt: "",
+  cloudStoreWrapped: false,
   detailReturnPage: "catalog",
   binders: [],
   ownedCards: [],
@@ -92,8 +97,6 @@ const els = {
   accountGoogleLogin: document.querySelector("#account-google-login"),
   accountLogout: document.querySelector("#account-logout"),
   accountSyncMeta: document.querySelector("#account-sync-meta"),
-  accountCloudUpload: document.querySelector("#account-cloud-upload"),
-  accountCloudDownload: document.querySelector("#account-cloud-download"),
   cardDetailPage: document.querySelector("#card-detail-page"),
   pokedexBanner: document.querySelector("#pokedex-banner"),
   pokedexBannerMeta: document.querySelector("#pokedex-banner-meta"),
@@ -1423,6 +1426,12 @@ function setAccountMessage(message) {
   }
 }
 
+function setAccountSyncMessage(message) {
+  if (els.accountSyncMeta) {
+    els.accountSyncMeta.textContent = message;
+  }
+}
+
 function renderAccount() {
   const cloud = window.OpenCardexCloud;
   const user = state.cloudUser || cloud?.getCurrentUser?.() || null;
@@ -1436,11 +1445,9 @@ function renderAccount() {
       ? `${user.displayName || user.email || "Compte connecte"}`
       : "";
   }
-  if (els.accountCloudUpload) els.accountCloudUpload.disabled = !isSignedIn;
-  if (els.accountCloudDownload) els.accountCloudDownload.disabled = !isSignedIn;
   if (els.accountSyncMeta) {
     els.accountSyncMeta.textContent = isSignedIn
-      ? "Sauvegarde manuelle de tes donnees locales vers Firebase."
+      ? "Synchronisation automatique active."
       : "Connecte-toi pour sauvegarder tes classeurs dans le cloud.";
   }
   if (!isReady) {
@@ -1491,29 +1498,92 @@ async function signOutAccount() {
   await window.OpenCardexCloud.signOut();
 }
 
-async function uploadCollectionToCloud() {
-  setAccountMessage("Envoi vers Firebase...");
+function hasActiveCloudSession() {
+  return state.cloudReady && Boolean(state.cloudUser) && Boolean(window.OpenCardexCloud);
+}
+
+function scheduleCloudUpload(reason = "local-change") {
+  if (!hasActiveCloudSession() || state.cloudApplyingRemote) {
+    return;
+  }
+  window.clearTimeout(state.cloudUploadTimer);
+  state.cloudUploadTimer = window.setTimeout(() => {
+    uploadCollectionToCloud(reason).catch((error) => {
+      setAccountSyncMessage(`Synchronisation impossible: ${error.message}`);
+    });
+  }, 900);
+}
+
+async function uploadCollectionToCloud(reason = "local-change") {
+  if (!hasActiveCloudSession() || state.cloudApplyingRemote) {
+    return;
+  }
+  setAccountSyncMessage("Synchronisation en cours...");
   const payload = await OpenCardexStore.exportBackup();
+  state.cloudLastRemoteExportedAt = payload.exportedAt || state.cloudLastRemoteExportedAt;
   await window.OpenCardexCloud.uploadBackup(payload);
-  setAccountMessage("Sauvegarde cloud terminee.");
-  if (els.accountSyncMeta) {
-    els.accountSyncMeta.textContent = `Dernier envoi: ${formatDateTime(new Date().toISOString())}.`;
+  setAccountSyncMessage(`Synchronise: ${formatDateTime(new Date().toISOString())}.`);
+}
+
+async function applyCloudBackup(snapshot) {
+  if (!snapshot?.payload) {
+    scheduleCloudUpload("initial-empty-cloud");
+    return;
+  }
+  const exportedAt = snapshot.exportedAt || snapshot.payload.exportedAt || "";
+  if (snapshot.originClientId === window.OpenCardexCloud?.clientId) {
+    state.cloudLastRemoteExportedAt = exportedAt || state.cloudLastRemoteExportedAt;
+    return;
+  }
+  if (exportedAt && exportedAt <= state.cloudLastRemoteExportedAt) {
+    return;
+  }
+  state.cloudApplyingRemote = true;
+  try {
+    setAccountSyncMessage("Mise a jour cloud recue...");
+    await OpenCardexStore.importBackup(snapshot.payload);
+    state.cloudLastRemoteExportedAt = exportedAt || state.cloudLastRemoteExportedAt;
+    await loadCollectionData();
+    setAccountSyncMessage(`Synchronise depuis le cloud: ${formatDateTime(new Date().toISOString())}.`);
+  } finally {
+    state.cloudApplyingRemote = false;
   }
 }
 
-async function downloadCollectionFromCloud() {
-  if (!confirm("Restaurer la sauvegarde cloud va fusionner les donnees cloud dans ce navigateur. Continuer ?")) {
+function stopCloudSubscription() {
+  if (state.cloudUnsubscribe) {
+    state.cloudUnsubscribe();
+    state.cloudUnsubscribe = null;
+  }
+}
+
+function startCloudSubscription() {
+  stopCloudSubscription();
+  if (!hasActiveCloudSession() || !window.OpenCardexCloud?.subscribeBackup) {
     return;
   }
-  setAccountMessage("Restauration depuis Firebase...");
-  const payload = await window.OpenCardexCloud.downloadBackup();
-  if (!payload) {
-    setAccountMessage("Aucune sauvegarde cloud trouvee.");
+  state.cloudUnsubscribe = window.OpenCardexCloud.subscribeBackup((snapshot) => {
+    applyCloudBackup(snapshot).catch((error) => {
+      setAccountSyncMessage(`Reception cloud impossible: ${error.message}`);
+    });
+  });
+}
+
+function wrapOpenCardexStoreForCloudSync() {
+  if (!window.OpenCardexStore || state.cloudStoreWrapped) {
     return;
   }
-  await OpenCardexStore.importBackup(payload);
-  await loadCollectionData();
-  setAccountMessage("Sauvegarde cloud restauree.");
+  state.cloudStoreWrapped = true;
+  ["saveBinder", "saveOwnedCard", "deleteBinder", "deleteOwnedCard", "importBackup"].forEach((methodName) => {
+    const original = OpenCardexStore[methodName];
+    OpenCardexStore[methodName] = async (...args) => {
+      const result = await original(...args);
+      if (!state.cloudApplyingRemote) {
+        scheduleCloudUpload(methodName);
+      }
+      return result;
+    };
+  });
 }
 
 function escapeHtml(value) {
@@ -2306,12 +2376,6 @@ els.accountGoogleLogin?.addEventListener("click", () => {
 els.accountLogout?.addEventListener("click", () => {
   signOutAccount().catch((error) => setAccountMessage(`Deconnexion impossible: ${error.message}`));
 });
-els.accountCloudUpload?.addEventListener("click", () => {
-  uploadCollectionToCloud().catch((error) => setAccountMessage(`Envoi impossible: ${error.message}`));
-});
-els.accountCloudDownload?.addEventListener("click", () => {
-  downloadCollectionFromCloud().catch((error) => setAccountMessage(`Restauration impossible: ${error.message}`));
-});
 els.pokedexBanner?.addEventListener("click", () => switchPage("pokedex"));
 els.pokedexBack?.addEventListener("click", () => switchPage("binders"));
 els.binderDetailBack?.addEventListener("click", () => switchPage("binders"));
@@ -2386,11 +2450,19 @@ document.addEventListener("keydown", (event) => {
 });
 window.addEventListener("opencardex-cloud-ready", () => {
   state.cloudReady = true;
+  wrapOpenCardexStoreForCloudSync();
+  startCloudSubscription();
   renderAccount();
 });
 window.addEventListener("opencardex-cloud-auth", (event) => {
   state.cloudReady = true;
   state.cloudUser = event.detail || null;
+  wrapOpenCardexStoreForCloudSync();
+  if (state.cloudUser) {
+    startCloudSubscription();
+  } else {
+    stopCloudSubscription();
+  }
   renderAccount();
 });
 els.binderForm.addEventListener("submit", async (event) => {
@@ -2455,6 +2527,8 @@ els.dialogClose.addEventListener("click", () => switchPage(state.detailReturnPag
 if (window.OpenCardexCloud) {
   state.cloudReady = true;
   state.cloudUser = window.OpenCardexCloud.getCurrentUser?.() || null;
+  wrapOpenCardexStoreForCloudSync();
+  startCloudSubscription();
   renderAccount();
 }
 
