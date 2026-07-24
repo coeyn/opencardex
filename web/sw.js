@@ -1,4 +1,4 @@
-const CACHE_NAME = "opencardex-app-v40";
+const CACHE_NAME = "opencardex-app-v41";
 const APP_SHELL = [
   "./",
   "index.html",

@@ -21,6 +21,7 @@ const state = {
   cloudUploadTimer: null,
   cloudUnsubscribe: null,
   cloudLastRemoteExportedAt: "",
+  cloudLastRevision: "",
   cloudStoreWrapped: false,
   detailReturnPage: "catalog",
   binders: [],
@@ -934,6 +935,7 @@ async function renderCollection() {
     article.querySelector("[data-delete-owned]").addEventListener("click", async () => {
       if (!confirm("Supprimer cette carte de la collection ?")) return;
       await OpenCardexStore.deleteOwnedCard(ownedCard.id);
+      await syncCloudNow("delete-owned-card");
       await loadCollectionData();
     });
     article.querySelector("[data-move-owned]").addEventListener("click", async () => {
@@ -941,6 +943,7 @@ async function renderCollection() {
       const nextBinderId = prompt(`ID du classeur cible:\n${choices}`, ownedCard.binderId || "");
       if (nextBinderId === null) return;
       await OpenCardexStore.saveOwnedCard({ ...ownedCard, binderId: nextBinderId || undefined });
+      await syncCloudNow("move-owned-card");
       await loadCollectionData();
     });
     els.collectionGrid.appendChild(article);
@@ -1309,6 +1312,7 @@ async function saveBinderCardCustomPrice({ reset = false } = {}) {
     ...ownedCard,
     customPrice,
   });
+  await syncCloudNow("custom-card-price");
   closeBinderCardPriceModal();
   await loadCollectionData();
   if (state.currentPage === "binder-detail") {
@@ -1358,6 +1362,7 @@ async function addCardToBinder(card, binderId) {
     forTrade: false,
     wanted: false,
   });
+  await syncCloudNow("quick-add-card");
   await loadCollectionData();
 }
 
@@ -1381,6 +1386,7 @@ async function confirmOwnedCardDraft() {
     forTrade: els.ownedDraftForTrade.checked,
     wanted: els.ownedDraftWanted.checked,
   });
+  await syncCloudNow("add-card-draft");
   state.pendingOwnedCardDraft = null;
   els.ownedCardDraftPanel.hidden = true;
   await loadCollectionData();
@@ -1537,6 +1543,7 @@ async function uploadCollectionToCloud(reason = "local-change") {
   if (!hasActiveCloudSession() || state.cloudApplyingRemote) {
     return;
   }
+  window.clearTimeout(state.cloudUploadTimer);
   setAccountSyncMessage("Synchronisation en cours...");
   const payload = await OpenCardexStore.exportBackup();
   state.cloudLastRemoteExportedAt = payload.exportedAt || state.cloudLastRemoteExportedAt;
@@ -1550,17 +1557,23 @@ async function applyCloudBackup(snapshot) {
     return;
   }
   const exportedAt = snapshot.exportedAt || snapshot.payload.exportedAt || "";
+  const revision = snapshot.revision || exportedAt;
+  if (revision && revision === state.cloudLastRevision) {
+    return;
+  }
   if (snapshot.originClientId === window.OpenCardexCloud?.clientId) {
+    state.cloudLastRevision = revision || state.cloudLastRevision;
     state.cloudLastRemoteExportedAt = exportedAt || state.cloudLastRemoteExportedAt;
     return;
   }
-  if (exportedAt && exportedAt <= state.cloudLastRemoteExportedAt) {
+  if (!revision && exportedAt && exportedAt <= state.cloudLastRemoteExportedAt) {
     return;
   }
   state.cloudApplyingRemote = true;
   try {
     setAccountSyncMessage("Mise a jour cloud recue...");
     await OpenCardexStore.importBackup(snapshot.payload);
+    state.cloudLastRevision = revision || state.cloudLastRevision;
     state.cloudLastRemoteExportedAt = exportedAt || state.cloudLastRemoteExportedAt;
     await loadCollectionData();
     setAccountSyncMessage(`Synchronise depuis le cloud: ${formatDateTime(new Date().toISOString())}.`);
@@ -1603,6 +1616,13 @@ function wrapOpenCardexStoreForCloudSync() {
       return result;
     };
   });
+}
+
+async function syncCloudNow(reason = "local-change") {
+  scheduleCloudUpload(reason);
+  if (hasActiveCloudSession() && !state.cloudApplyingRemote) {
+    await uploadCollectionToCloud(reason);
+  }
 }
 
 function escapeHtml(value) {
@@ -1704,6 +1724,7 @@ async function confirmBinderDelete() {
   for (const card of state.ownedCards.filter((item) => item.binderId === binderId)) {
     await OpenCardexStore.saveOwnedCard({ ...card, binderId: undefined });
   }
+  await syncCloudNow("delete-binder");
   closeBinderDeleteModal();
   await loadCollectionData();
 }
@@ -2484,12 +2505,16 @@ window.addEventListener("opencardex-cloud-auth", (event) => {
   }
   renderAccount();
 });
+window.addEventListener("opencardex-cloud-error", (event) => {
+  setAccountSyncMessage(`Erreur Firebase: ${event.detail || "sync interrompue"}`);
+});
 els.binderForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await OpenCardexStore.saveBinder({
     name: els.binderName.value,
     description: els.binderDescription.value,
   });
+  await syncCloudNow("create-binder");
   els.binderName.value = "";
   els.binderDescription.value = "";
   closeBinderCreateModal();
