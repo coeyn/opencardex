@@ -190,6 +190,34 @@
                 <button id="account-sync-download" class="secondary-button" type="button">Recuperer le cloud</button>
               </div>
             </section>
+            <section class="account-card">
+              <h3>Profil</h3>
+              <label class="quote-field">
+                <span class="history-cell-label">Pseudo unique</span>
+                <input id="account-username" type="text" autocomplete="nickname" placeholder="ex: nicolas_25" maxlength="20" />
+              </label>
+              <label class="quote-field">
+                <span class="history-cell-label">Pokemon prefere</span>
+                <input id="account-favorite-pokemon" type="text" placeholder="ex: Dracaufeu" maxlength="80" />
+              </label>
+              <button id="account-profile-save" class="primary-button account-wide-button" type="button">Enregistrer profil</button>
+              <p id="account-profile-meta" class="subtitle">Choisis un pseudo pour utiliser les amis.</p>
+            </section>
+            <section class="account-card">
+              <h3>Amis</h3>
+              <div class="account-inline-form">
+                <input id="account-friend-search" type="text" placeholder="Pseudo d'un ami" />
+                <button id="account-friend-add" class="secondary-button" type="button">Ajouter</button>
+              </div>
+              <p id="account-friends-meta" class="subtitle">Aucun ami charge.</p>
+              <div id="account-friends-list" class="account-list"></div>
+            </section>
+            <section class="account-card account-friend-view">
+              <h3>Classeurs d'ami</h3>
+              <p id="account-friend-view-meta" class="subtitle">Selectionne un ami pour voir ses classeurs.</p>
+              <div id="account-friend-binders" class="binder-list compact-list"></div>
+              <div id="account-friend-binder-detail"></div>
+            </section>
           </div>
         </section>
       </main>

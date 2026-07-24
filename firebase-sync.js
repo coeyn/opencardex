@@ -16,6 +16,7 @@ import {
   getDocs,
   getFirestore,
   onSnapshot,
+  runTransaction,
   serverTimestamp,
   setDoc,
   writeBatch,
@@ -50,6 +51,18 @@ function ownedCardsRef(uid) {
   return collection(db, "users", uid, "ownedCards");
 }
 
+function profileRef(uid) {
+  return doc(db, "profiles", uid);
+}
+
+function usernameRef(username) {
+  return doc(db, "usernames", username);
+}
+
+function friendsRef(uid) {
+  return collection(db, "users", uid, "friends");
+}
+
 function publicUser(user) {
   if (!user) return null;
   return {
@@ -66,6 +79,13 @@ function currentUserOrThrow() {
   return auth.currentUser;
 }
 
+function normalizeUsername(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "");
+}
+
 function removeUndefinedFields(value) {
   if (Array.isArray(value)) {
     return value.map(removeUndefinedFields);
@@ -78,6 +98,132 @@ function removeUndefinedFields(value) {
       .filter(([, entryValue]) => entryValue !== undefined)
       .map(([key, entryValue]) => [key, removeUndefinedFields(entryValue)]),
   );
+}
+
+function cleanProfile(data) {
+  if (!data) return null;
+  return {
+    uid: String(data.uid || ""),
+    username: String(data.username || ""),
+    favoritePokemon: String(data.favoritePokemon || ""),
+    displayName: String(data.displayName || ""),
+    updatedAt: data.updatedAt || "",
+  };
+}
+
+async function getMyProfile() {
+  const user = currentUserOrThrow();
+  const snapshot = await getDoc(profileRef(user.uid));
+  return cleanProfile(snapshot.exists() ? { uid: user.uid, ...snapshot.data() } : {
+    uid: user.uid,
+    username: "",
+    favoritePokemon: "",
+    displayName: user.displayName || "",
+  });
+}
+
+async function saveMyProfile(input) {
+  const user = currentUserOrThrow();
+  const username = normalizeUsername(input?.username);
+  const favoritePokemon = String(input?.favoritePokemon || "").trim().slice(0, 80);
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+    throw new Error("Pseudo: 3 a 20 caracteres, lettres, chiffres ou underscore.");
+  }
+  const profileData = {
+    uid: user.uid,
+    username,
+    favoritePokemon,
+    displayName: user.displayName || "",
+    updatedAt: new Date().toISOString(),
+  };
+
+  await runTransaction(db, async (transaction) => {
+    const profileSnapshot = await transaction.get(profileRef(user.uid));
+    const previousUsername = normalizeUsername(profileSnapshot.exists() ? profileSnapshot.data().username : "");
+    const usernameSnapshot = await transaction.get(usernameRef(username));
+    if (usernameSnapshot.exists() && usernameSnapshot.data()?.uid !== user.uid) {
+      throw new Error("Ce pseudo est deja pris.");
+    }
+    if (previousUsername && previousUsername !== username) {
+      transaction.delete(usernameRef(previousUsername));
+    }
+    transaction.set(usernameRef(username), {
+      uid: user.uid,
+      username,
+      updatedAt: serverTimestamp(),
+    });
+    transaction.set(profileRef(user.uid), {
+      ...profileData,
+      updatedAt: serverTimestamp(),
+    });
+  });
+  return profileData;
+}
+
+async function findProfileByUsername(usernameInput) {
+  const username = normalizeUsername(usernameInput);
+  if (!username) return null;
+  const usernameSnapshot = await getDoc(usernameRef(username));
+  if (!usernameSnapshot.exists()) return null;
+  const uid = usernameSnapshot.data()?.uid;
+  if (!uid) return null;
+  const profileSnapshot = await getDoc(profileRef(uid));
+  return cleanProfile(profileSnapshot.exists() ? { uid, ...profileSnapshot.data() } : { uid, username });
+}
+
+async function addFriendByUsername(usernameInput) {
+  const user = currentUserOrThrow();
+  const profile = await findProfileByUsername(usernameInput);
+  if (!profile?.uid) {
+    throw new Error("Aucun utilisateur avec ce pseudo.");
+  }
+  if (profile.uid === user.uid) {
+    throw new Error("Tu ne peux pas t'ajouter toi-meme.");
+  }
+  await setDoc(doc(db, "users", user.uid, "friends", profile.uid), {
+    uid: profile.uid,
+    username: profile.username,
+    favoritePokemon: profile.favoritePokemon || "",
+    addedAt: serverTimestamp(),
+  });
+  return profile;
+}
+
+async function listFriends() {
+  const user = currentUserOrThrow();
+  const snapshot = await getDocs(friendsRef(user.uid));
+  const friends = [];
+  await Promise.all(snapshot.docs.map(async (friendSnapshot) => {
+    const friendData = friendSnapshot.data() || {};
+    const profileSnapshot = await getDoc(profileRef(friendSnapshot.id));
+    friends.push(cleanProfile(profileSnapshot.exists()
+      ? { uid: friendSnapshot.id, ...profileSnapshot.data() }
+      : { uid: friendSnapshot.id, ...friendData }));
+  }));
+  return friends.sort((left, right) => left.username.localeCompare(right.username, "fr", { sensitivity: "base" }));
+}
+
+async function removeFriend(uid) {
+  const user = currentUserOrThrow();
+  await deleteDoc(doc(db, "users", user.uid, "friends", uid));
+}
+
+async function downloadUserCollection(uid) {
+  currentUserOrThrow();
+  const [profileSnapshot, bindersSnapshot, ownedCardsSnapshot] = await Promise.all([
+    getDoc(profileRef(uid)),
+    getDocs(bindersRef(uid)),
+    getDocs(ownedCardsRef(uid)),
+  ]);
+  const binders = [];
+  const ownedCards = [];
+  bindersSnapshot.forEach((snapshot) => binders.push(cleanCloudItem({ id: snapshot.id, ...snapshot.data() })));
+  ownedCardsSnapshot.forEach((snapshot) => ownedCards.push(cleanCloudItem({ id: snapshot.id, ...snapshot.data() })));
+  return {
+    profile: cleanProfile(profileSnapshot.exists() ? { uid, ...profileSnapshot.data() } : { uid }),
+    binders,
+    ownedCards,
+  };
 }
 
 async function uploadBackup(payload) {
@@ -298,6 +444,13 @@ window.OpenCardexCloud = {
   saveOwnedCard,
   deleteBinder,
   deleteOwnedCard,
+  getMyProfile,
+  saveMyProfile,
+  findProfileByUsername,
+  addFriendByUsername,
+  listFriends,
+  removeFriend,
+  downloadUserCollection,
   clientId,
 };
 
