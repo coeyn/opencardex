@@ -23,6 +23,14 @@ const state = {
   cloudLastRemoteExportedAt: "",
   cloudLastRevision: "",
   cloudStoreWrapped: false,
+  accountProfile: null,
+  accountFriends: [],
+  activeFriendUid: null,
+  activeFriendProfile: null,
+  friendBinders: [],
+  friendOwnedCards: [],
+  friendBinderPage: 0,
+  activeFriendBinderId: null,
   detailReturnPage: "catalog",
   binders: [],
   ownedCards: [],
@@ -100,6 +108,17 @@ const els = {
   accountSyncMeta: document.querySelector("#account-sync-meta"),
   accountSyncUpload: document.querySelector("#account-sync-upload"),
   accountSyncDownload: document.querySelector("#account-sync-download"),
+  accountUsername: document.querySelector("#account-username"),
+  accountFavoritePokemon: document.querySelector("#account-favorite-pokemon"),
+  accountProfileSave: document.querySelector("#account-profile-save"),
+  accountProfileMeta: document.querySelector("#account-profile-meta"),
+  accountFriendSearch: document.querySelector("#account-friend-search"),
+  accountFriendAdd: document.querySelector("#account-friend-add"),
+  accountFriendsMeta: document.querySelector("#account-friends-meta"),
+  accountFriendsList: document.querySelector("#account-friends-list"),
+  accountFriendViewMeta: document.querySelector("#account-friend-view-meta"),
+  accountFriendBinders: document.querySelector("#account-friend-binders"),
+  accountFriendBinderDetail: document.querySelector("#account-friend-binder-detail"),
   cardDetailPage: document.querySelector("#card-detail-page"),
   pokedexBanner: document.querySelector("#pokedex-banner"),
   pokedexBannerMeta: document.querySelector("#pokedex-banner-meta"),
@@ -1469,6 +1488,18 @@ function setAccountSyncMessage(message) {
   }
 }
 
+function setAccountProfileMessage(message) {
+  if (els.accountProfileMeta) {
+    els.accountProfileMeta.textContent = message;
+  }
+}
+
+function setAccountFriendsMessage(message) {
+  if (els.accountFriendsMeta) {
+    els.accountFriendsMeta.textContent = message;
+  }
+}
+
 function renderAccount() {
   const cloud = window.OpenCardexCloud;
   const user = state.cloudUser || cloud?.getCurrentUser?.() || null;
@@ -1484,6 +1515,11 @@ function renderAccount() {
   }
   if (els.accountSyncUpload) els.accountSyncUpload.disabled = !isSignedIn;
   if (els.accountSyncDownload) els.accountSyncDownload.disabled = !isSignedIn;
+  if (els.accountProfileSave) els.accountProfileSave.disabled = !isSignedIn;
+  if (els.accountFriendAdd) els.accountFriendAdd.disabled = !isSignedIn;
+  if (els.accountUsername) els.accountUsername.disabled = !isSignedIn;
+  if (els.accountFavoritePokemon) els.accountFavoritePokemon.disabled = !isSignedIn;
+  if (els.accountFriendSearch) els.accountFriendSearch.disabled = !isSignedIn;
   if (els.accountSyncMeta) {
     els.accountSyncMeta.textContent = isSignedIn
       ? "Synchronisation automatique active."
@@ -1495,6 +1531,86 @@ function renderAccount() {
     setAccountMessage("Compte connecte.");
   } else {
     setAccountMessage("Connecte-toi pour synchroniser ta collection.");
+  }
+  if (!isSignedIn) {
+    clearAccountSocialData();
+    return;
+  }
+  refreshAccountSocialData().catch((error) => {
+    setAccountProfileMessage(`Profil indisponible: ${error.message}`);
+  });
+}
+
+function clearAccountSocialData() {
+  state.accountProfile = null;
+  state.accountFriends = [];
+  state.activeFriendUid = null;
+  state.activeFriendProfile = null;
+  state.friendBinders = [];
+  state.friendOwnedCards = [];
+  state.activeFriendBinderId = null;
+  if (els.accountUsername) els.accountUsername.value = "";
+  if (els.accountFavoritePokemon) els.accountFavoritePokemon.value = "";
+  if (els.accountFriendsList) els.accountFriendsList.innerHTML = "";
+  if (els.accountFriendBinders) els.accountFriendBinders.innerHTML = "";
+  if (els.accountFriendBinderDetail) els.accountFriendBinderDetail.innerHTML = "";
+  setAccountProfileMessage("Connecte-toi pour modifier ton profil.");
+  setAccountFriendsMessage("Connecte-toi pour utiliser les amis.");
+  if (els.accountFriendViewMeta) {
+    els.accountFriendViewMeta.textContent = "Selectionne un ami pour voir ses classeurs.";
+  }
+}
+
+async function refreshAccountSocialData({ preserveInputs = false } = {}) {
+  if (!hasActiveCloudSession() || !window.OpenCardexCloud?.getMyProfile) return;
+  const [profile, friends] = await Promise.all([
+    window.OpenCardexCloud.getMyProfile(),
+    window.OpenCardexCloud.listFriends?.() || [],
+  ]);
+  state.accountProfile = profile;
+  state.accountFriends = friends;
+  renderAccountProfile(preserveInputs);
+  renderAccountFriends();
+}
+
+function renderAccountProfile(preserveInputs = false) {
+  const profile = state.accountProfile || {};
+  const editingProfile = document.activeElement === els.accountUsername || document.activeElement === els.accountFavoritePokemon;
+  if (!preserveInputs && !editingProfile) {
+    if (els.accountUsername) els.accountUsername.value = profile.username || "";
+    if (els.accountFavoritePokemon) els.accountFavoritePokemon.value = profile.favoritePokemon || "";
+  }
+  setAccountProfileMessage(profile.username
+    ? `Profil public: @${profile.username}${profile.favoritePokemon ? ` - ${profile.favoritePokemon}` : ""}.`
+    : "Choisis un pseudo unique pour utiliser les amis.");
+}
+
+function renderAccountFriends() {
+  if (!els.accountFriendsList) return;
+  els.accountFriendsList.innerHTML = "";
+  const friends = state.accountFriends || [];
+  setAccountFriendsMessage(friends.length ? `${friends.length} ami(s).` : "Aucun ami pour le moment.");
+  for (const friend of friends) {
+    const article = document.createElement("article");
+    article.className = "account-list-row";
+    article.innerHTML = `
+      <button class="account-friend-main" type="button" data-open-friend="${friend.uid}">
+        <strong>@${escapeHtml(friend.username || "ami")}</strong>
+        <span>${escapeHtml(friend.favoritePokemon || "Pokemon prefere non renseigne")}</span>
+      </button>
+      <button class="icon-button account-row-action" type="button" data-remove-friend="${friend.uid}" aria-label="Supprimer @${escapeHtml(friend.username || "ami")}">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M8 6V4h8v2"></path>
+          <path d="M19 6l-1 14H6L5 6"></path>
+        </svg>
+      </button>
+    `;
+    article.querySelector("[data-open-friend]").addEventListener("click", () => openFriendCollection(friend.uid));
+    article.querySelector("[data-remove-friend]").addEventListener("click", async () => {
+      await removeAccountFriend(friend.uid);
+    });
+    els.accountFriendsList.appendChild(article);
   }
 }
 
@@ -1535,6 +1651,179 @@ async function signInAccountWithGoogle() {
 async function signOutAccount() {
   setAccountMessage("Deconnexion...");
   await window.OpenCardexCloud.signOut();
+}
+
+async function saveAccountProfile() {
+  if (!hasActiveCloudSession()) {
+    setAccountProfileMessage("Connexion requise.");
+    return;
+  }
+  setAccountProfileMessage("Enregistrement...");
+  const profile = await window.OpenCardexCloud.saveMyProfile({
+    username: els.accountUsername?.value || "",
+    favoritePokemon: els.accountFavoritePokemon?.value || "",
+  });
+  state.accountProfile = profile;
+  renderAccountProfile();
+  setAccountProfileMessage(`Profil enregistre: @${profile.username}.`);
+}
+
+async function addAccountFriend() {
+  if (!hasActiveCloudSession()) {
+    setAccountFriendsMessage("Connexion requise.");
+    return;
+  }
+  const username = els.accountFriendSearch?.value.trim() || "";
+  if (!username) {
+    setAccountFriendsMessage("Indique le pseudo de ton ami.");
+    return;
+  }
+  setAccountFriendsMessage("Recherche de l'ami...");
+  const friend = await window.OpenCardexCloud.addFriendByUsername(username);
+  if (els.accountFriendSearch) els.accountFriendSearch.value = "";
+  await refreshAccountSocialData({ preserveInputs: true });
+  setAccountFriendsMessage(`@${friend.username} ajoute.`);
+}
+
+async function removeAccountFriend(uid) {
+  if (!hasActiveCloudSession()) return;
+  await window.OpenCardexCloud.removeFriend(uid);
+  if (state.activeFriendUid === uid) {
+    state.activeFriendUid = null;
+    state.activeFriendProfile = null;
+    state.friendBinders = [];
+    state.friendOwnedCards = [];
+    state.activeFriendBinderId = null;
+    if (els.accountFriendBinders) els.accountFriendBinders.innerHTML = "";
+    if (els.accountFriendBinderDetail) els.accountFriendBinderDetail.innerHTML = "";
+    if (els.accountFriendViewMeta) els.accountFriendViewMeta.textContent = "Selectionne un ami pour voir ses classeurs.";
+  }
+  await refreshAccountSocialData({ preserveInputs: true });
+}
+
+function getFriendBinderName(binderId) {
+  return state.friendBinders.find((binder) => binder.id === binderId)?.name || "Sans classeur";
+}
+
+function friendBinderOwnedCards(binderId) {
+  return state.friendOwnedCards.filter((card) => card.binderId === binderId);
+}
+
+async function openFriendCollection(uid) {
+  if (!hasActiveCloudSession()) {
+    setAccountFriendsMessage("Connexion requise.");
+    return;
+  }
+  if (!window.OpenCardexCloud?.downloadUserCollection) {
+    setAccountFriendsMessage("Lecture ami indisponible.");
+    return;
+  }
+  if (els.accountFriendViewMeta) els.accountFriendViewMeta.textContent = "Chargement des classeurs...";
+  const data = await window.OpenCardexCloud.downloadUserCollection(uid);
+  const pokedexId = OpenCardexStore.systemPokedexBinderId || "system_pokedex";
+  state.activeFriendUid = uid;
+  state.activeFriendProfile = data.profile || state.accountFriends.find((friend) => friend.uid === uid) || null;
+  state.friendBinders = (data.binders || []).filter((binder) => binder.id !== pokedexId && !binder.system);
+  state.friendOwnedCards = data.ownedCards || [];
+  state.activeFriendBinderId = null;
+  state.friendBinderPage = 0;
+  await renderFriendBinders();
+}
+
+async function renderFriendBinders() {
+  if (!els.accountFriendBinders) return;
+  els.accountFriendBinders.innerHTML = "";
+  if (els.accountFriendBinderDetail) els.accountFriendBinderDetail.innerHTML = "";
+  const profileLabel = state.activeFriendProfile?.username ? `@${state.activeFriendProfile.username}` : "Cet ami";
+  if (els.accountFriendViewMeta) {
+    els.accountFriendViewMeta.textContent = state.friendBinders.length
+      ? `${profileLabel}: ${state.friendBinders.length} classeur(s).`
+      : `${profileLabel} n'a pas de classeur visible.`;
+  }
+  for (const binder of state.friendBinders) {
+    const ownedCards = friendBinderOwnedCards(binder.id);
+    const quantity = ownedCards.reduce((sum, card) => sum + card.quantity, 0);
+    const views = await Promise.all(ownedCards.map(getOwnedCardView));
+    const binderValue = views.reduce((sum, view) => {
+      const price = getOwnedCardEffectivePrice(view);
+      return price === null ? sum : sum + price * view.ownedCard.quantity;
+    }, 0);
+    const article = document.createElement("article");
+    article.className = "binder-card friend-binder-card";
+    article.innerHTML = `
+      <div class="binder-card-head">
+        <h3>${escapeHtml(binder.name)}</h3>
+      </div>
+      <p class="subtitle">${escapeHtml(binder.description || "Aucune description")}</p>
+      <p class="subtitle">${quantity} carte(s)</p>
+      <p class="binder-card-value">${formatPrice(binderValue)}</p>
+    `;
+    article.addEventListener("click", () => openFriendBinderDetail(binder.id));
+    els.accountFriendBinders.appendChild(article);
+  }
+}
+
+async function openFriendBinderDetail(binderId) {
+  state.activeFriendBinderId = binderId;
+  state.friendBinderPage = 0;
+  await renderFriendBinderDetail();
+}
+
+async function renderFriendBinderDetail() {
+  const binder = state.friendBinders.find((item) => item.id === state.activeFriendBinderId);
+  if (!binder || !els.accountFriendBinderDetail) return;
+  const views = await Promise.all(friendBinderOwnedCards(binder.id).map(getOwnedCardView));
+  views.sort(compareBinderCardViews);
+  const pageSize = 9;
+  const pageCount = Math.max(1, Math.ceil(views.length / pageSize));
+  state.friendBinderPage = Math.min(Math.max(state.friendBinderPage, 0), pageCount - 1);
+  const pageViews = views.slice(state.friendBinderPage * pageSize, state.friendBinderPage * pageSize + pageSize);
+  const article = document.createElement("article");
+  article.className = "binder-page-board friend-binder-board";
+  article.innerHTML = `
+    <div class="friend-binder-title">
+      <strong>${escapeHtml(binder.name)}</strong>
+      <span>Lecture seule</span>
+    </div>
+    <div class="binder-page-grid">
+      ${Array.from({ length: 9 }, (_, index) => {
+        const view = pageViews[index];
+        return `
+          <button class="binder-slot${view ? " has-card" : ""}" type="button" ${view ? `data-card-id="${view.detail.id}"` : "disabled"}>
+            ${
+              view?.detail.image_url
+                ? `<img src="${view.detail.image_url}" alt="${escapeHtml(view.detail.name)}" loading="lazy">`
+                : `<span class="binder-empty-slot"></span>`
+            }
+            ${view ? `<span class="binder-slot-price">${formatPrice(getOwnedCardEffectivePrice(view))}</span>` : ""}
+          </button>
+        `;
+      }).join("")}
+    </div>
+    <div class="pokedex-pager binder-pager">
+      <button class="icon-button" type="button" data-friend-binder-prev aria-label="Page precedente">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+      </button>
+      <span>Page ${state.friendBinderPage + 1} / ${pageCount}</span>
+      <button class="icon-button" type="button" data-friend-binder-next aria-label="Page suivante">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+      </button>
+    </div>
+  `;
+  els.accountFriendBinderDetail.replaceChildren(article);
+  article.querySelector("[data-friend-binder-prev]").disabled = state.friendBinderPage <= 0;
+  article.querySelector("[data-friend-binder-next]").disabled = state.friendBinderPage >= pageCount - 1;
+  article.querySelector("[data-friend-binder-prev]").addEventListener("click", () => {
+    state.friendBinderPage -= 1;
+    renderFriendBinderDetail();
+  });
+  article.querySelector("[data-friend-binder-next]").addEventListener("click", () => {
+    state.friendBinderPage += 1;
+    renderFriendBinderDetail();
+  });
+  article.querySelectorAll("[data-card-id]").forEach((button) => {
+    button.addEventListener("click", () => openCardDetail(button.dataset.cardId));
+  });
 }
 
 function hasActiveCloudSession() {
@@ -2571,6 +2860,23 @@ els.accountSyncUpload?.addEventListener("click", () => {
 els.accountSyncDownload?.addEventListener("click", () => {
   manualDownloadCollection().catch((error) => {
     setAccountSyncMessage(`Reception impossible: ${error.message}`);
+  });
+});
+els.accountProfileSave?.addEventListener("click", () => {
+  saveAccountProfile().catch((error) => {
+    setAccountProfileMessage(`Profil impossible: ${error.message}`);
+  });
+});
+els.accountFriendAdd?.addEventListener("click", () => {
+  addAccountFriend().catch((error) => {
+    setAccountFriendsMessage(`Ajout impossible: ${error.message}`);
+  });
+});
+els.accountFriendSearch?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  addAccountFriend().catch((error) => {
+    setAccountFriendsMessage(`Ajout impossible: ${error.message}`);
   });
 });
 els.dialogAddOwned.addEventListener("click", async () => {

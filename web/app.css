@@ -897,6 +897,80 @@ select:focus {
   width: 100%;
 }
 
+.account-inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.account-inline-form input {
+  min-width: 0;
+}
+
+.account-list {
+  display: grid;
+  gap: 8px;
+}
+
+.account-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.account-friend-main {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.account-friend-main strong,
+.account-friend-main span,
+.friend-binder-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-friend-main span,
+.friend-binder-title span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account-row-action {
+  width: 40px;
+  height: 40px;
+}
+
+.account-friend-view {
+  grid-column: 1 / -1;
+}
+
+.friend-binder-card {
+  cursor: pointer;
+}
+
+.friend-binder-board {
+  margin-top: 14px;
+}
+
+.friend-binder-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+
 .card-tile {
   position: relative;
   display: block;
