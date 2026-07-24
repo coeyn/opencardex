@@ -84,6 +84,14 @@
             <div>
               <h2>Classeur</h2>
             </div>
+            <button id="binder-sync-toggle" class="icon-button" type="button" aria-label="Synchroniser les classeurs">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 12a9 9 0 0 1-15.5 6.3"></path>
+                <path d="M3 12A9 9 0 0 1 18.5 5.7"></path>
+                <path d="M6 18H3v3"></path>
+                <path d="M18 6h3V3"></path>
+              </svg>
+            </button>
             <button id="binder-create-toggle" class="icon-button" type="button" aria-label="Creer un classeur">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 5v14"></path>
@@ -365,6 +373,27 @@
       <div class="quote-draft-actions">
         <button id="owned-draft-confirm" class="primary-button" type="button">Ajouter</button>
         <button id="owned-draft-cancel" class="secondary-button" type="button">Annuler</button>
+      </div>
+    </section>
+
+    <section id="binder-sync-modal" class="modal-backdrop" hidden>
+      <div class="modal-panel binder-modal" role="dialog" aria-modal="true" aria-labelledby="binder-sync-title">
+        <div class="modal-head">
+          <div>
+            <h2 id="binder-sync-title">Synchronisation</h2>
+            <p id="binder-sync-status" class="subtitle">Choisis le sens de synchronisation.</p>
+          </div>
+          <button id="binder-sync-cancel" class="icon-button" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18"></path>
+              <path d="m6 6 12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="quote-draft-actions">
+          <button id="binder-sync-upload" class="primary-button" type="button">Envoyer cet appareil</button>
+          <button id="binder-sync-download" class="secondary-button" type="button">Recuperer le cloud</button>
+        </div>
       </div>
     </section>
 
