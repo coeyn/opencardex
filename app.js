@@ -113,6 +113,12 @@ const els = {
   binderSortApply: document.querySelector("#binder-sort-apply"),
   binderSortCancel: document.querySelector("#binder-sort-cancel"),
   binderSortCancelSecondary: document.querySelector("#binder-sort-cancel-secondary"),
+  binderSyncToggle: document.querySelector("#binder-sync-toggle"),
+  binderSyncModal: document.querySelector("#binder-sync-modal"),
+  binderSyncStatus: document.querySelector("#binder-sync-status"),
+  binderSyncCancel: document.querySelector("#binder-sync-cancel"),
+  binderSyncUpload: document.querySelector("#binder-sync-upload"),
+  binderSyncDownload: document.querySelector("#binder-sync-download"),
   binderCardPriceModal: document.querySelector("#binder-card-price-modal"),
   binderCardPriceSubtitle: document.querySelector("#binder-card-price-subtitle"),
   binderCardCustomPrice: document.querySelector("#binder-card-custom-price"),
@@ -1618,10 +1624,66 @@ function wrapOpenCardexStoreForCloudSync() {
   });
 }
 
+function collectionSummary(payload) {
+  const binders = Array.isArray(payload?.binders) ? payload.binders.length : 0;
+  const cards = Array.isArray(payload?.ownedCards) ? payload.ownedCards.length : 0;
+  return `${binders} classeur(s), ${cards} carte(s)`;
+}
+
 async function syncCloudNow(reason = "local-change") {
   scheduleCloudUpload(reason);
   if (hasActiveCloudSession() && !state.cloudApplyingRemote) {
     await uploadCollectionToCloud(reason);
+  }
+}
+
+function openBinderSyncModal() {
+  if (!els.binderSyncModal) return;
+  els.binderSyncStatus.textContent = hasActiveCloudSession()
+    ? "Choisis le sens de synchronisation."
+    : "Connecte-toi dans Compte avant de synchroniser.";
+  els.binderSyncUpload.disabled = !hasActiveCloudSession();
+  els.binderSyncDownload.disabled = !hasActiveCloudSession();
+  els.binderSyncModal.hidden = false;
+}
+
+function closeBinderSyncModal() {
+  if (els.binderSyncModal) {
+    els.binderSyncModal.hidden = true;
+  }
+}
+
+async function manualUploadCollection() {
+  if (!hasActiveCloudSession()) {
+    els.binderSyncStatus.textContent = "Connexion requise.";
+    return;
+  }
+  const payload = await OpenCardexStore.exportBackup();
+  els.binderSyncStatus.textContent = `Envoi: ${collectionSummary(payload)}...`;
+  await uploadCollectionToCloud("manual-upload");
+  els.binderSyncStatus.textContent = `Cloud mis a jour: ${collectionSummary(payload)}.`;
+}
+
+async function manualDownloadCollection() {
+  if (!hasActiveCloudSession()) {
+    els.binderSyncStatus.textContent = "Connexion requise.";
+    return;
+  }
+  const snapshot = await window.OpenCardexCloud.downloadBackupSnapshot();
+  if (!snapshot?.payload) {
+    els.binderSyncStatus.textContent = "Aucune sauvegarde cloud trouvee.";
+    return;
+  }
+  els.binderSyncStatus.textContent = `Reception: ${collectionSummary(snapshot.payload)}...`;
+  state.cloudApplyingRemote = true;
+  try {
+    await OpenCardexStore.importBackup(snapshot.payload);
+    state.cloudLastRevision = snapshot.revision || state.cloudLastRevision;
+    state.cloudLastRemoteExportedAt = snapshot.exportedAt || state.cloudLastRemoteExportedAt;
+    await loadCollectionData();
+    els.binderSyncStatus.textContent = `Local mis a jour: ${collectionSummary(snapshot.payload)}.`;
+  } finally {
+    state.cloudApplyingRemote = false;
   }
 }
 
@@ -2420,6 +2482,18 @@ els.pokedexBanner?.addEventListener("click", () => switchPage("pokedex"));
 els.pokedexBack?.addEventListener("click", () => switchPage("binders"));
 els.binderDetailBack?.addEventListener("click", () => switchPage("binders"));
 els.binderSortToggle?.addEventListener("click", () => openBinderSortModal());
+els.binderSyncToggle?.addEventListener("click", () => openBinderSyncModal());
+els.binderSyncCancel?.addEventListener("click", () => closeBinderSyncModal());
+els.binderSyncUpload?.addEventListener("click", () => {
+  manualUploadCollection().catch((error) => {
+    els.binderSyncStatus.textContent = `Envoi impossible: ${error.message}`;
+  });
+});
+els.binderSyncDownload?.addEventListener("click", () => {
+  manualDownloadCollection().catch((error) => {
+    els.binderSyncStatus.textContent = `Reception impossible: ${error.message}`;
+  });
+});
 els.dialogAddOwned.addEventListener("click", () => {
   if (state.currentDetailCard) {
     prepareOwnedCardDraft(state.currentDetailCard);
@@ -2457,6 +2531,11 @@ els.binderSortModal?.addEventListener("click", (event) => {
     closeBinderSortModal();
   }
 });
+els.binderSyncModal?.addEventListener("click", (event) => {
+  if (event.target === els.binderSyncModal) {
+    closeBinderSyncModal();
+  }
+});
 els.binderCardPriceCancel?.addEventListener("click", () => closeBinderCardPriceModal());
 els.binderCardPriceSave?.addEventListener("click", () => {
   saveBinderCardCustomPrice().catch((error) => {
@@ -2483,6 +2562,9 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "Escape" && !els.binderSortModal.hidden) {
     closeBinderSortModal();
+  }
+  if (event.key === "Escape" && els.binderSyncModal && !els.binderSyncModal.hidden) {
+    closeBinderSyncModal();
   }
   if (event.key === "Escape" && els.binderCardPriceModal && !els.binderCardPriceModal.hidden) {
     closeBinderCardPriceModal();

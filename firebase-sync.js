@@ -91,6 +91,21 @@ async function downloadBackup() {
   return snapshot.data()?.payload || null;
 }
 
+async function downloadBackupSnapshot() {
+  const user = currentUserOrThrow();
+  const snapshot = await getDoc(backupRef(user.uid));
+  if (!snapshot.exists()) {
+    return null;
+  }
+  const data = snapshot.data();
+  return {
+    payload: data?.payload || null,
+    revision: data?.revision || "",
+    exportedAt: data?.exportedAt || data?.payload?.exportedAt || "",
+    originClientId: data?.originClientId || "",
+  };
+}
+
 function subscribeBackup(callback) {
   const user = currentUserOrThrow();
   return onSnapshot(backupRef(user.uid), (snapshot) => {
@@ -118,6 +133,7 @@ window.OpenCardexCloud = {
   signOut: () => signOut(auth),
   uploadBackup,
   downloadBackup,
+  downloadBackupSnapshot,
   subscribeBackup,
   clientId,
 };
