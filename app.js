@@ -796,13 +796,7 @@ async function importQuoteFile(file) {
 
 async function loadCollectionData() {
   if (!window.OpenCardexStore) return;
-  state.binders = await OpenCardexStore.getBinders();
-  state.ownedCards = await OpenCardexStore.getOwnedCards();
-  const pokedexId = OpenCardexStore.systemPokedexBinderId;
-  if (pokedexId && !state.binders.some((binder) => binder.id === pokedexId)) {
-    const pokedexBinder = await OpenCardexStore.saveBinder(OpenCardexStore.buildSystemPokedexBinder());
-    state.binders = [pokedexBinder, ...state.binders];
-  }
+  await readCollectionStateFromStore();
   renderCollectionFilters();
   renderOwnedDraftBinderOptions();
   await renderPokedexBanner();
@@ -811,6 +805,17 @@ async function loadCollectionData() {
     await renderCollection();
   }
   await refreshCurrentCollectionView();
+}
+
+async function readCollectionStateFromStore() {
+  if (!window.OpenCardexStore) return;
+  state.binders = await OpenCardexStore.getBinders();
+  state.ownedCards = await OpenCardexStore.getOwnedCards();
+  const pokedexId = OpenCardexStore.systemPokedexBinderId;
+  if (pokedexId && !state.binders.some((binder) => binder.id === pokedexId)) {
+    const pokedexBinder = await OpenCardexStore.saveBinder(OpenCardexStore.buildSystemPokedexBinder());
+    state.binders = [pokedexBinder, ...state.binders];
+  }
 }
 
 async function refreshCurrentCollectionView() {
@@ -1133,9 +1138,13 @@ async function renderBinders() {
   }
 }
 
-function renderOwnedDraftBinderOptions() {
+function getUserBinders() {
   const pokedexId = OpenCardexStore.systemPokedexBinderId || "";
-  const userBinders = state.binders.filter((binder) => binder.id !== pokedexId);
+  return state.binders.filter((binder) => binder.id !== pokedexId && !binder.system);
+}
+
+function renderOwnedDraftBinderOptions() {
+  const userBinders = getUserBinders();
   els.ownedDraftBinder.innerHTML = userBinders.length
     ? userBinders.map((binder) => `<option value="${binder.id}">${escapeHtml(binder.name)}</option>`).join("")
     : `<option value="">Crée un classeur avant d'ajouter une carte</option>`;
@@ -1329,7 +1338,8 @@ function openBinderCardDetail() {
   openCardDetail(ownedCard.cardId);
 }
 
-function prepareOwnedCardDraft(card) {
+async function prepareOwnedCardDraft(card) {
+  await readCollectionStateFromStore();
   state.pendingOwnedCardDraft = card;
   els.ownedDraftTitle.textContent = card.name;
   els.ownedDraftSubtitle.textContent = card.set_name || card.local_id || "";
@@ -1422,9 +1432,9 @@ async function searchOwnedCards() {
     node.querySelector(".card-button").addEventListener("click", () => openCardDetail(card.id));
     const addButton = node.querySelector(".card-quote-button");
     addButton.textContent = "+ Collection";
-    addButton.addEventListener("click", (event) => {
+    addButton.addEventListener("click", async (event) => {
       event.stopPropagation();
-      prepareOwnedCardDraft(card);
+      await prepareOwnedCardDraft(card);
     });
     els.ownedCardSearchResults.appendChild(node);
   }
@@ -2046,6 +2056,22 @@ function renderSeries() {
   }
 }
 
+function renderCatalogBinderMenu(menu, card) {
+  const userBinders = getUserBinders();
+  menu.innerHTML = userBinders.length
+    ? userBinders
+        .map((binder) => `<button type="button" data-binder-id="${binder.id}">${escapeHtml(binder.name)}</button>`)
+        .join("")
+    : `<button type="button" disabled>Cree un classeur</button>`;
+  menu.querySelectorAll("button[data-binder-id]").forEach((binderButton) => {
+    binderButton.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      menu.hidden = true;
+      await addCardToBinder(card, binderButton.dataset.binderId || "");
+    });
+  });
+}
+
 function renderCards() {
   const term = els.cardSearch.value.trim().toLowerCase();
   const filtered = state.activeSetCards
@@ -2121,25 +2147,15 @@ function renderCards() {
       </div>
     `;
     const menu = catalogActions.querySelector(".catalog-binder-menu");
-    const userBinders = state.binders.filter((binder) => binder.id !== OpenCardexStore.systemPokedexBinderId);
-    menu.innerHTML = userBinders.length
-      ? userBinders
-          .map((binder) => `<button type="button" data-binder-id="${binder.id}">${escapeHtml(binder.name)}</button>`)
-          .join("")
-      : `<button type="button" disabled>Crée un classeur</button>`;
-    catalogActions.querySelector(".catalog-add-button").addEventListener("click", (event) => {
+    renderCatalogBinderMenu(menu, card);
+    catalogActions.querySelector(".catalog-add-button").addEventListener("click", async (event) => {
       event.stopPropagation();
+      await readCollectionStateFromStore();
+      renderCatalogBinderMenu(menu, card);
       document.querySelectorAll(".catalog-binder-menu").forEach((item) => {
         if (item !== menu) item.hidden = true;
       });
       menu.hidden = !menu.hidden;
-    });
-    menu.querySelectorAll("button").forEach((binderButton) => {
-      binderButton.addEventListener("click", async (event) => {
-        event.stopPropagation();
-        menu.hidden = true;
-        await addCardToBinder(card, binderButton.dataset.binderId || "");
-      });
     });
     node.appendChild(catalogActions);
     els.cardsGrid.appendChild(node);
@@ -2557,9 +2573,9 @@ els.accountSyncDownload?.addEventListener("click", () => {
     setAccountSyncMessage(`Reception impossible: ${error.message}`);
   });
 });
-els.dialogAddOwned.addEventListener("click", () => {
+els.dialogAddOwned.addEventListener("click", async () => {
   if (state.currentDetailCard) {
-    prepareOwnedCardDraft(state.currentDetailCard);
+    await prepareOwnedCardDraft(state.currentDetailCard);
   }
 });
 els.binderCreateToggle?.addEventListener("click", () => openBinderCreateModal());
