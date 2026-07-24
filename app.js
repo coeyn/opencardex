@@ -1560,10 +1560,11 @@ async function applyCloudBackup(snapshot) {
     scheduleCloudUpload("initial-empty-cloud");
     return;
   }
+  const payload = repairCloudCollectionPayload(snapshot.payload);
   const exportedAt = snapshot.exportedAt || snapshot.payload.exportedAt || "";
   const revision = snapshot.revision || exportedAt;
-  const cloudBinders = Array.isArray(snapshot.payload.binders) ? snapshot.payload.binders : [];
-  const cloudOwnedCards = Array.isArray(snapshot.payload.ownedCards) ? snapshot.payload.ownedCards : [];
+  const cloudBinders = Array.isArray(payload.binders) ? payload.binders : [];
+  const cloudOwnedCards = Array.isArray(payload.ownedCards) ? payload.ownedCards : [];
   const localUserBinders = state.binders.filter((binder) => binder.id !== OpenCardexStore.systemPokedexBinderId);
   if (!revision && cloudBinders.length === 0 && cloudOwnedCards.length === 0 && (localUserBinders.length || state.ownedCards.length)) {
     scheduleCloudUpload("empty-cloud-bootstrap");
@@ -1583,7 +1584,7 @@ async function applyCloudBackup(snapshot) {
   state.cloudApplyingRemote = true;
   try {
     setAccountSyncMessage("Mise a jour cloud recue...");
-    await OpenCardexStore.importBackup(snapshot.payload);
+    await OpenCardexStore.importBackup(payload);
     state.cloudLastRevision = revision || state.cloudLastRevision;
     state.cloudLastRemoteExportedAt = exportedAt || state.cloudLastRemoteExportedAt;
     await loadCollectionData();
@@ -1659,9 +1660,53 @@ async function syncLocalMutationToCloud(methodName, result, args) {
 }
 
 function collectionSummary(payload) {
-  const binders = Array.isArray(payload?.binders) ? payload.binders.length : 0;
+  const binders = Array.isArray(payload?.binders) ? payload.binders.filter(isVisibleCloudBinder).length : 0;
   const cards = Array.isArray(payload?.ownedCards) ? payload.ownedCards.length : 0;
   return `${binders} classeur(s), ${cards} carte(s)`;
+}
+
+function isVisibleCloudBinder(binder) {
+  const pokedexId = window.OpenCardexStore?.systemPokedexBinderId || "system_pokedex";
+  return Boolean(binder && binder.id !== pokedexId && !binder.system);
+}
+
+function repairCloudCollectionPayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+  const pokedexId = window.OpenCardexStore?.systemPokedexBinderId || "system_pokedex";
+  const binders = Array.isArray(payload.binders) ? payload.binders.map((binder) => ({ ...binder })) : [];
+  const ownedCards = Array.isArray(payload.ownedCards) ? payload.ownedCards.map((card) => ({ ...card })) : [];
+  const binderIds = new Set(binders.map((binder) => String(binder.id || "")));
+  const orphanCards = ownedCards.filter((card) => {
+    const binderId = String(card.binderId || "");
+    return !binderId || binderId === pokedexId || !binderIds.has(binderId);
+  });
+
+  if (orphanCards.length) {
+    const fallbackBinderId = "binder_cloud_recovered";
+    if (!binderIds.has(fallbackBinderId)) {
+      const timestamp = new Date().toISOString();
+      binders.push({
+        id: fallbackBinderId,
+        name: "Classeur recupere",
+        description: "Cartes recuperees depuis le cloud.",
+        system: false,
+        locked: false,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+    orphanCards.forEach((card) => {
+      card.binderId = fallbackBinderId;
+    });
+  }
+
+  return {
+    ...payload,
+    binders,
+    ownedCards,
+  };
 }
 
 async function syncCloudNow(reason = "local-change") {
@@ -1692,14 +1737,16 @@ async function manualDownloadCollection() {
     setAccountSyncMessage("Aucune sauvegarde cloud trouvee.");
     return;
   }
-  setAccountSyncMessage(`Reception: ${collectionSummary(snapshot.payload)}...`);
+  const payload = repairCloudCollectionPayload(snapshot.payload);
+  setAccountSyncMessage(`Reception: ${collectionSummary(payload)}...`);
   state.cloudApplyingRemote = true;
   try {
-    await OpenCardexStore.importBackup(snapshot.payload);
+    await OpenCardexStore.importBackup(payload);
     state.cloudLastRevision = snapshot.revision || state.cloudLastRevision;
     state.cloudLastRemoteExportedAt = snapshot.exportedAt || state.cloudLastRemoteExportedAt;
     await loadCollectionData();
-    setAccountSyncMessage(`Local mis a jour: ${collectionSummary(snapshot.payload)}.`);
+    const localPayload = await OpenCardexStore.exportBackup();
+    setAccountSyncMessage(`Local mis a jour: ${collectionSummary(localPayload)}.`);
   } finally {
     state.cloudApplyingRemote = false;
   }
