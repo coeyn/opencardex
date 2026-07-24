@@ -1564,6 +1564,13 @@ async function applyCloudBackup(snapshot) {
   }
   const exportedAt = snapshot.exportedAt || snapshot.payload.exportedAt || "";
   const revision = snapshot.revision || exportedAt;
+  const cloudBinders = Array.isArray(snapshot.payload.binders) ? snapshot.payload.binders : [];
+  const cloudOwnedCards = Array.isArray(snapshot.payload.ownedCards) ? snapshot.payload.ownedCards : [];
+  const localUserBinders = state.binders.filter((binder) => binder.id !== OpenCardexStore.systemPokedexBinderId);
+  if (!revision && cloudBinders.length === 0 && cloudOwnedCards.length === 0 && (localUserBinders.length || state.ownedCards.length)) {
+    scheduleCloudUpload("empty-cloud-bootstrap");
+    return;
+  }
   if (revision && revision === state.cloudLastRevision) {
     return;
   }
@@ -1617,11 +1624,40 @@ function wrapOpenCardexStoreForCloudSync() {
     OpenCardexStore[methodName] = async (...args) => {
       const result = await original(...args);
       if (!state.cloudApplyingRemote) {
-        scheduleCloudUpload(methodName);
+        syncLocalMutationToCloud(methodName, result, args).catch((error) => {
+          setAccountSyncMessage(`Synchronisation impossible: ${error.message}`);
+        });
       }
       return result;
     };
   });
+}
+
+async function syncLocalMutationToCloud(methodName, result, args) {
+  if (!hasActiveCloudSession() || state.cloudApplyingRemote) {
+    return;
+  }
+  if (methodName === "saveBinder" && window.OpenCardexCloud.saveBinder) {
+    await window.OpenCardexCloud.saveBinder(result);
+    setAccountSyncMessage("Classeur synchronise.");
+    return;
+  }
+  if (methodName === "saveOwnedCard" && window.OpenCardexCloud.saveOwnedCard) {
+    await window.OpenCardexCloud.saveOwnedCard(result);
+    setAccountSyncMessage("Carte synchronisee.");
+    return;
+  }
+  if (methodName === "deleteBinder" && window.OpenCardexCloud.deleteBinder) {
+    await window.OpenCardexCloud.deleteBinder(args[0]);
+    setAccountSyncMessage("Classeur supprime du cloud.");
+    return;
+  }
+  if (methodName === "deleteOwnedCard" && window.OpenCardexCloud.deleteOwnedCard) {
+    await window.OpenCardexCloud.deleteOwnedCard(args[0]);
+    setAccountSyncMessage("Carte supprimee du cloud.");
+    return;
+  }
+  await uploadCollectionToCloud(methodName);
 }
 
 function collectionSummary(payload) {
