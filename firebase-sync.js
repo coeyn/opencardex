@@ -12,6 +12,7 @@ import {
   doc,
   getDoc,
   getFirestore,
+  onSnapshot,
   serverTimestamp,
   setDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -29,6 +30,8 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
+const clientId = localStorage.getItem("opencardex_cloud_client_id") || crypto.randomUUID();
+localStorage.setItem("opencardex_cloud_client_id", clientId);
 
 function backupRef(uid) {
   return doc(db, "users", uid, "backups", "opencardex");
@@ -56,6 +59,7 @@ async function uploadBackup(payload) {
     payload,
     updatedAt: serverTimestamp(),
     exportedAt: payload?.exportedAt || new Date().toISOString(),
+    originClientId: clientId,
     app: "OpenCardex",
   });
 }
@@ -69,6 +73,22 @@ async function downloadBackup() {
   return snapshot.data()?.payload || null;
 }
 
+function subscribeBackup(callback) {
+  const user = currentUserOrThrow();
+  return onSnapshot(backupRef(user.uid), (snapshot) => {
+    if (!snapshot.exists()) {
+      callback(null);
+      return;
+    }
+    const data = snapshot.data();
+    callback({
+      payload: data?.payload || null,
+      exportedAt: data?.exportedAt || data?.payload?.exportedAt || "",
+      originClientId: data?.originClientId || "",
+    });
+  });
+}
+
 window.OpenCardexCloud = {
   getCurrentUser: () => publicUser(auth.currentUser),
   signInWithEmail: (email, password) => signInWithEmailAndPassword(auth, email, password),
@@ -77,6 +97,8 @@ window.OpenCardexCloud = {
   signOut: () => signOut(auth),
   uploadBackup,
   downloadBackup,
+  subscribeBackup,
+  clientId,
 };
 
 onAuthStateChanged(auth, (user) => {

@@ -165,6 +165,8 @@
     const db = await openDb();
     try {
       const tx = db.transaction(["binders", "ownedCards", "settings"], "readwrite");
+      tx.objectStore("binders").clear();
+      tx.objectStore("ownedCards").clear();
       for (const binder of binders) tx.objectStore("binders").put(binder);
       for (const card of ownedCards) tx.objectStore("ownedCards").put(card);
       tx.objectStore("settings").put({ key: "lastImportAt", value: nowIso(), updatedAt: nowIso() });
