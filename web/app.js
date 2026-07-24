@@ -807,6 +807,25 @@ async function loadCollectionData() {
   if (els.collectionGrid) {
     await renderCollection();
   }
+  await refreshCurrentCollectionView();
+}
+
+async function refreshCurrentCollectionView() {
+  if (state.currentPage === "catalog") {
+    renderCards();
+    return;
+  }
+  if (state.currentPage === "binder-detail") {
+    await renderBinderDetailPage();
+    return;
+  }
+  if (state.currentPage === "pokedex") {
+    await renderPokedexPage();
+    return;
+  }
+  if (state.currentPage === "detail" && state.currentDetailCard) {
+    renderOwnershipStatus(state.currentDetailCard);
+  }
 }
 
 function getBinderName(binderId) {
