@@ -54,14 +54,29 @@ function currentUserOrThrow() {
   return auth.currentUser;
 }
 
+function removeUndefinedFields(value) {
+  if (Array.isArray(value)) {
+    return value.map(removeUndefinedFields);
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .map(([key, entryValue]) => [key, removeUndefinedFields(entryValue)]),
+  );
+}
+
 async function uploadBackup(payload) {
   const user = currentUserOrThrow();
   const revision = `${Date.now()}-${clientId}-${revisionCounter++}`;
+  const cleanPayload = removeUndefinedFields(payload);
   await setDoc(backupRef(user.uid), {
-    payload,
+    payload: cleanPayload,
     revision,
     updatedAt: serverTimestamp(),
-    exportedAt: payload?.exportedAt || new Date().toISOString(),
+    exportedAt: cleanPayload?.exportedAt || new Date().toISOString(),
     originClientId: clientId,
     app: "OpenCardex",
   });
