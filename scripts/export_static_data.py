@@ -23,6 +23,7 @@ from pokemon_tcg_tracker.webapp import (
 
 
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "web" / "data"
+STATIC_DATA_DIR = PROJECT_ROOT / "web" / "data"
 
 
 def parse_args() -> argparse.Namespace:
@@ -426,6 +427,15 @@ def export_version(connection, output_dir: Path) -> None:
     print("Version metadata exported", flush=True)
 
 
+def export_static_assets(output_dir: Path) -> None:
+    source = STATIC_DATA_DIR / "national-pokedex.json"
+    if not source.exists():
+        print(f"Static asset skipped, missing: {source}", flush=True)
+        return
+    shutil.copy2(source, output_dir / "national-pokedex.json")
+    print("Static asset exported: national-pokedex.json", flush=True)
+
+
 def main() -> None:
     started_at = time.monotonic()
     args = parse_args()
@@ -442,6 +452,7 @@ def main() -> None:
         card_ids_by_set = export_sets_and_search(connection, args.output_dir)
         export_card_details(connection, args.output_dir, card_ids_by_set)
         export_version(connection, args.output_dir)
+        export_static_assets(args.output_dir)
     print(
         f"Static data exported to {args.output_dir} in {format_duration(time.monotonic() - started_at)}",
         flush=True,
