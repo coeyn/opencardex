@@ -980,8 +980,13 @@ async function loadNationalPokedex() {
   if (state.nationalPokedex) {
     return state.nationalPokedex;
   }
-  const payload = await fetchStaticJson("data/national-pokedex.json");
-  state.nationalPokedex = Array.isArray(payload.pokedex) ? payload.pokedex : [];
+  try {
+    const payload = await fetchStaticJson("data/national-pokedex.json");
+    state.nationalPokedex = Array.isArray(payload.pokedex) ? payload.pokedex : [];
+  } catch (error) {
+    console.warn("National Pokedex unavailable", error);
+    state.nationalPokedex = [];
+  }
   return state.nationalPokedex;
 }
 
