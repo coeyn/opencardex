@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Suppression du compte - OpenCardex</title>
+    <meta name="theme-color" content="#163f7a" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #172033;
+        --muted: #647084;
+        --line: #d9e0ea;
+        --accent: #163f7a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Arial, sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        width: min(900px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 48px;
+      }
+
+      article {
+        display: grid;
+        gap: 22px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        line-height: 1.15;
+      }
+
+      h1 {
+        font-size: clamp(28px, 6vw, 42px);
+      }
+
+      h2 {
+        margin-bottom: 8px;
+        font-size: 20px;
+      }
+
+      p,
+      ul {
+        margin: 0;
+      }
+
+      ul {
+        padding-left: 20px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      a {
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .back-link {
+        display: inline-flex;
+        width: fit-content;
+        margin-bottom: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./">Retour a OpenCardex</a>
+      <article>
+        <header>
+          <h1>Suppression du compte</h1>
+          <p class="muted">Derniere mise a jour : 24 septembre 2026</p>
+        </header>
+
+        <section>
+          <h2>Demander la suppression</h2>
+          <p>
+            Pour demander la suppression de ton compte OpenCardex et des donnees associees, envoie un e-mail a
+            <a href="mailto:contact@opencardex.fr?subject=Suppression%20du%20compte%20OpenCardex">contact@opencardex.fr</a>
+            depuis l'adresse e-mail utilisee pour ton compte OpenCardex.
+          </p>
+        </section>
+
+        <section>
+          <h2>Informations a indiquer</h2>
+          <ul>
+            <li>l'adresse e-mail du compte OpenCardex a supprimer ;</li>
+            <li>le pseudo OpenCardex, si tu en as cree un ;</li>
+            <li>la phrase "Je demande la suppression de mon compte OpenCardex et de mes donnees associees".</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Donnees supprimees</h2>
+          <p>La suppression concerne les donnees synchronisees associees au compte :</p>
+          <ul>
+            <li>compte Firebase Authentication ;</li>
+            <li>profil, pseudo, Pokemon prefere et liste d'amis ;</li>
+            <li>classeurs, cartes possedees, prix personnalises et options de collection.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Delai de traitement</h2>
+          <p>
+            Les demandes sont traitees dans un delai raisonnable apres verification que la demande provient bien du
+            titulaire du compte. Une confirmation est envoyee lorsque la suppression est terminee.
+          </p>
+        </section>
+
+        <section>
+          <h2>Contact</h2>
+          <p>
+            Pour toute question concernant la suppression du compte, contacte
+            <a href="mailto:contact@opencardex.fr">contact@opencardex.fr</a>.
+          </p>
+        </section>
+      </article>
+    </main>
+  </body>
+</html>
