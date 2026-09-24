@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Politique de confidentialite - OpenCardex</title>
+    <meta name="theme-color" content="#163f7a" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #172033;
+        --muted: #647084;
+        --line: #d9e0ea;
+        --accent: #163f7a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Arial, sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        width: min(900px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 48px;
+      }
+
+      article {
+        display: grid;
+        gap: 22px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        line-height: 1.15;
+      }
+
+      h1 {
+        font-size: clamp(28px, 6vw, 42px);
+      }
+
+      h2 {
+        margin-bottom: 8px;
+        font-size: 20px;
+      }
+
+      p,
+      ul {
+        margin: 0;
+      }
+
+      ul {
+        padding-left: 20px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      a {
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .back-link {
+        display: inline-flex;
+        width: fit-content;
+        margin-bottom: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./">Retour a OpenCardex</a>
+      <article>
+        <header>
+          <h1>Politique de confidentialite</h1>
+          <p class="muted">Derniere mise a jour : 24 septembre 2026</p>
+        </header>
+
+        <section>
+          <h2>Application concernee</h2>
+          <p>
+            Cette politique s'applique a OpenCardex, application web et Android permettant de consulter un catalogue
+            de cartes Pokemon TCG, de gerer des classeurs personnels et de synchroniser sa collection entre appareils.
+          </p>
+        </section>
+
+        <section>
+          <h2>Donnees collectees</h2>
+          <p>OpenCardex peut traiter les donnees suivantes lorsque tu utilises un compte :</p>
+          <ul>
+            <li>identifiants de connexion Firebase, comme l'adresse e-mail ou l'identifiant Google du compte ;</li>
+            <li>pseudo public, Pokemon prefere et liste d'amis si tu choisis de les renseigner ;</li>
+            <li>classeurs, cartes ajoutees, prix personnalises, quantites, langue, etat et options de collection ;</li>
+            <li>donnees techniques necessaires au fonctionnement de Firebase Authentication et Firestore.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Utilisation des donnees</h2>
+          <p>Ces donnees servent uniquement a :</p>
+          <ul>
+            <li>connecter l'utilisateur a son compte ;</li>
+            <li>sauvegarder et synchroniser ses classeurs entre plusieurs appareils ;</li>
+            <li>permettre les fonctions sociales, comme l'ajout d'amis et la consultation de classeurs partages ;</li>
+            <li>maintenir le bon fonctionnement et la securite de l'application.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Partage des donnees</h2>
+          <p>
+            OpenCardex ne vend pas les donnees personnelles et n'affiche pas de publicite. Les donnees de compte et de
+            synchronisation sont hebergees via Firebase, service fourni par Google. Les classeurs visibles par les amis
+            peuvent etre consultes par les utilisateurs que tu ajoutes comme amis dans l'application.
+          </p>
+        </section>
+
+        <section>
+          <h2>Conservation et suppression</h2>
+          <p>
+            Les donnees de collection restent associees au compte tant que celui-ci est utilise. Tu peux demander la
+            suppression de ton compte et des donnees associees en envoyant une demande a
+            <a href="mailto:contact@opencardex.fr">contact@opencardex.fr</a>. La suppression entraine l'effacement des
+            donnees synchronisees associees au compte.
+          </p>
+        </section>
+
+        <section>
+          <h2>Securite</h2>
+          <p>
+            OpenCardex utilise Firebase Authentication et Firestore pour gerer l'authentification et la synchronisation.
+            Les acces aux donnees sont limites par les regles de securite Firebase du projet.
+          </p>
+        </section>
+
+        <section>
+          <h2>Contact</h2>
+          <p>
+            Pour toute question concernant cette politique ou tes donnees, tu peux contacter OpenCardex a
+            <a href="mailto:contact@opencardex.fr">contact@opencardex.fr</a>.
+          </p>
+        </section>
+      </article>
+    </main>
+  </body>
+</html>
