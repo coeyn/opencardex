@@ -1,4 +1,4 @@
-const CACHE_NAME = "opencardex-app-v50";
+const CACHE_NAME = "opencardex-app-v51";
 const APP_SHELL = [
   "./",
   "index.html",
@@ -7,6 +7,7 @@ const APP_SHELL = [
   "firebase-sync.js",
   "storage.js",
   "pwa.js",
+  "privacy.html",
   "data/national-pokedex.json",
   "offline.html",
   "manifest.webmanifest",
