@@ -16,9 +16,9 @@ from pokemon_tcg_tracker.webapp import (
     build_asset_url,
     build_card_image_url,
     build_catalog_slope_status,
+    build_cardmarket_product_url,
     build_local_ranges,
     compute_percent_change,
-    extract_cardmarket_product_url,
 )
 
 
@@ -91,6 +91,7 @@ def latest_price_select(prefix: str = "ps") -> str:
         {prefix}.avg1_holo,
         {prefix}.avg7_holo,
         {prefix}.avg30_holo,
+        {prefix}.product_id,
         {prefix}.raw_pricing_json,
         {prefix}.tcgplayer_currency,
         {prefix}.tcgplayer_normal_market,
@@ -113,7 +114,7 @@ def row_latest_price(row: object) -> dict[str, object]:
         "avg1_holo": row["avg1_holo"],
         "avg7_holo": row["avg7_holo"],
         "avg30_holo": row["avg30_holo"],
-        "cardmarket_url": extract_cardmarket_product_url(row["raw_pricing_json"]),
+        "cardmarket_url": build_cardmarket_product_url(row["product_id"]),
         "tcgplayer_currency": row["tcgplayer_currency"],
         "tcgplayer_normal_market": row["tcgplayer_normal_market"],
         "tcgplayer_reverse_market": row["tcgplayer_reverse_market"],

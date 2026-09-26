@@ -231,6 +231,67 @@ def insert_price_snapshot(
     tcgplayer = pricing.get("tcgplayer") or {}
     tcgplayer_normal = tcgplayer.get("normal") or {}
     tcgplayer_reverse = tcgplayer.get("reverse-holofoil") or {}
+    captured_day = captured_at[:10]
+
+    values = (
+        captured_at,
+        source_updated_at,
+        cardmarket.get("unit"),
+        cardmarket.get("idProduct"),
+        cardmarket.get("avg"),
+        cardmarket.get("low"),
+        cardmarket.get("trend"),
+        cardmarket.get("avg1"),
+        cardmarket.get("avg7"),
+        cardmarket.get("avg30"),
+        cardmarket.get("avg-holo"),
+        cardmarket.get("low-holo"),
+        cardmarket.get("trend-holo"),
+        cardmarket.get("avg1-holo"),
+        cardmarket.get("avg7-holo"),
+        cardmarket.get("avg30-holo"),
+        None,
+        sync_run_id,
+        tcgplayer.get("unit"),
+        tcgplayer_normal.get("marketPrice"),
+        tcgplayer_reverse.get("marketPrice"),
+        tcgplayer.get("updated"),
+    )
+
+    cursor = connection.execute(
+        """
+        UPDATE price_snapshots
+        SET
+            captured_at = ?,
+            source_updated_at = ?,
+            currency = ?,
+            product_id = ?,
+            avg = ?,
+            low = ?,
+            trend = ?,
+            avg1 = ?,
+            avg7 = ?,
+            avg30 = ?,
+            avg_holo = ?,
+            low_holo = ?,
+            trend_holo = ?,
+            avg1_holo = ?,
+            avg7_holo = ?,
+            avg30_holo = ?,
+            raw_pricing_json = ?,
+            sync_run_id = ?,
+            tcgplayer_currency = ?,
+            tcgplayer_normal_market = ?,
+            tcgplayer_reverse_market = ?,
+            tcgplayer_updated = ?
+        WHERE card_id = ?
+            AND source_name = ?
+            AND substr(captured_at, 1, 10) = ?
+        """,
+        values + (card_id, "cardmarket", captured_day),
+    )
+    if cursor.rowcount:
+        return
 
     connection.execute(
         """
@@ -242,32 +303,7 @@ def insert_price_snapshot(
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (
-            card_id,
-            captured_at,
-            source_updated_at,
-            "cardmarket",
-            cardmarket.get("unit"),
-            cardmarket.get("idProduct"),
-            cardmarket.get("avg"),
-            cardmarket.get("low"),
-            cardmarket.get("trend"),
-            cardmarket.get("avg1"),
-            cardmarket.get("avg7"),
-            cardmarket.get("avg30"),
-            cardmarket.get("avg-holo"),
-            cardmarket.get("low-holo"),
-            cardmarket.get("trend-holo"),
-            cardmarket.get("avg1-holo"),
-            cardmarket.get("avg7-holo"),
-            cardmarket.get("avg30-holo"),
-            json_dumps(pricing),
-            sync_run_id,
-            tcgplayer.get("unit"),
-            tcgplayer_normal.get("marketPrice"),
-            tcgplayer_reverse.get("marketPrice"),
-            tcgplayer.get("updated"),
-        ),
+        (card_id, values[0], values[1], "cardmarket") + values[2:],
     )
 
 
